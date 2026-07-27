@@ -13,45 +13,47 @@
  *   muted-foreground sobre card esc.. 6.1:1
  */
 
-@layer base {
-  :root {
-    /* --- Marca (3 cores) --- */
-    --navy: 205 100% 13%; /* #002443 — estrutura */
-    --navy-deep: 205 100% 6%; /* #00121F — profundidade */
-    --mist: 230 26% 96%; /* #F2F3F8 — superfície clara */
-    --teal: 193 96% 29%; /* #027193 — ação */
-    --teal-bright: 193 80% 42%; /* hover/foco do teal */
+/* Sem @layer aqui de propósito: este arquivo é importado como módulo próprio e o
+ * Tailwind não veria o @tailwind base correspondente. Custom property não precisa
+ * de layer — a cascata resolve pela especificidade de :root e .dark. */
 
-    /* --- Semânticas (3, dessaturadas de propósito) --- */
-    --success: 168 62% 32%;
-    --warn: 38 72% 46%;
-    --danger: 356 58% 48%;
+:root {
+  /* --- Marca (3 cores) --- */
+  --navy: 205 100% 13%; /* #002443 — estrutura */
+  --navy-deep: 205 100% 6%; /* #00121F — profundidade */
+  --mist: 230 26% 96%; /* #F2F3F8 — superfície clara */
+  --teal: 193 96% 29%; /* #027193 — ação */
+  --teal-bright: 193 80% 42%; /* hover/foco do teal */
 
-    /* --- Tema claro (padrão) --- */
-    --background: 230 26% 96%;
-    --foreground: 205 60% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 205 60% 12%;
-    --muted: 230 20% 92%;
-    --muted-foreground: 205 14% 40%;
-    --hairline: 205 100% 13%;
-    --hairline-opacity: 0.08;
-    --ring: 193 96% 29%;
-    --radius: 0.625rem; /* 10px */
+  /* --- Semânticas (3, dessaturadas de propósito) --- */
+  --success: 168 62% 32%;
+  --warn: 38 72% 46%;
+  --danger: 356 58% 48%;
 
-    /* --- Shell: idêntico nos dois temas --- */
-    --shell: 205 100% 13%;
-    --shell-foreground: 0 0% 100%;
-  }
+  /* --- Tema claro (padrão) --- */
+  --background: 230 26% 96%;
+  --foreground: 205 60% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 205 60% 12%;
+  --muted: 230 20% 92%;
+  --muted-foreground: 205 14% 40%;
+  --hairline: 205 100% 13%;
+  --hairline-opacity: 0.08;
+  --ring: 193 96% 29%;
+  --radius: 0.625rem; /* 10px */
 
-  .dark {
-    --background: 205 100% 6%;
-    --foreground: 230 26% 94%;
-    --card: 207 84% 15%; /* #062B45 */
-    --card-foreground: 230 26% 94%;
-    --muted: 207 50% 20%;
-    --muted-foreground: 205 16% 66%;
-    --hairline: 0 0% 100%;
-    --hairline-opacity: 0.08;
-  }
+  /* --- Shell: idêntico nos dois temas --- */
+  --shell: 205 100% 13%;
+  --shell-foreground: 0 0% 100%;
+}
+
+.dark {
+  --background: 205 100% 6%;
+  --foreground: 230 26% 94%;
+  --card: 207 84% 15%; /* #062B45 */
+  --card-foreground: 230 26% 94%;
+  --muted: 207 50% 20%;
+  --muted-foreground: 205 16% 66%;
+  --hairline: 0 0% 100%;
+  --hairline-opacity: 0.08;
 }
