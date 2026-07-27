@@ -32,13 +32,52 @@ type BootSequenceProps = {
   chaveSessao?: string
   /** Posição/escala alvo para onde a logo migra ao final (ex.: painel esquerdo do login). */
   alvo?: Alvo
+  /**
+   * Seletor CSS do elemento que a logo vai "virar" ao final — a transição
+   * compartilhada que faz a abertura parecer continuidade e não interrupção.
+   * Medido em runtime, no instante da fase 3, então funciona em qualquer
+   * layout. Tem precedência sobre `alvo`; se o elemento não existir, cai no
+   * comportamento padrão (apenas encolher).
+   */
+  seletorAlvo?: string
 }
 
 const CHAVE_PADRAO = "inhaus-boot"
 
+/**
+ * Transformação final da logo do overlay: mede o elemento-alvo no momento da
+ * fase 3 e devolve o translate/scale que faz a logo da abertura pousar
+ * exatamente sobre a logo do layout. É isso que transforma o splash em
+ * continuidade — a logo não some para a tela trocar, ela VIRA o elemento.
+ */
+function calcularTransformFinal(
+  logo: HTMLElement,
+  seletorAlvo: string | undefined,
+  alvo: Alvo | undefined,
+): string {
+  if (seletorAlvo) {
+    const destino = document.querySelector(seletorAlvo)
+    if (destino) {
+      const origem = logo.getBoundingClientRect()
+      const chegada = destino.getBoundingClientRect()
+      if (origem.width > 0 && chegada.width > 0) {
+        const escala = chegada.width / origem.width
+        // O translate é aplicado antes do scale, então corrige-se pelo centro.
+        const dx =
+          chegada.left + chegada.width / 2 - (origem.left + origem.width / 2)
+        const dy =
+          chegada.top + chegada.height / 2 - (origem.top + origem.height / 2)
+        return `translate(${dx}px, ${dy}px) scale(${escala})`
+      }
+    }
+  }
+  if (alvo) return `translate(${alvo.x}px, ${alvo.y}px) scale(${alvo.escala})`
+  return "scale(0.42)"
+}
+
 type Estado = "verificando" | "oculto" | "ativo"
 
-export function BootSequence({ chaveSessao = CHAVE_PADRAO, alvo }: BootSequenceProps): JSX.Element | null {
+export function BootSequence({ chaveSessao = CHAVE_PADRAO, alvo, seletorAlvo }: BootSequenceProps): JSX.Element | null {
   const [estado, setEstado] = useState<Estado>("verificando")
   const [reduzida, setReduzida] = useState(false)
 
@@ -229,9 +268,7 @@ export function BootSequence({ chaveSessao = CHAVE_PADRAO, alvo }: BootSequenceP
       }
       if (logo) {
         logo.style.transition = `transform 400ms ${EASE_CALM}`
-        logo.style.transform = alvo
-          ? `translate(${alvo.x}px, ${alvo.y}px) scale(${alvo.escala})`
-          : "scale(0.42)"
+        logo.style.transform = calcularTransformFinal(logo, seletorAlvo, alvo)
       }
     }, 1700)
 
@@ -244,7 +281,7 @@ export function BootSequence({ chaveSessao = CHAVE_PADRAO, alvo }: BootSequenceP
       window.removeEventListener("touchstart", pular)
       limpar()
     }
-  }, [estado, reduzida, chaveSessao, alvo])
+  }, [estado, reduzida, chaveSessao, alvo, seletorAlvo])
 
   if (estado !== "ativo") return null
 
