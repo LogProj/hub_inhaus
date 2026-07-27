@@ -1,13 +1,14 @@
 import type { Metadata } from "next"
+import { CalendarDays, ShieldCheck, Sparkles } from "lucide-react"
+
 import { LoginCanvasResponsivo, LoginForm } from "@/components/auth/LoginForm"
 import { BootSequence } from "@/components/brand/BootSequence"
 import { InhausLogo } from "@/components/brand/InhausLogo"
 
 /**
- * Tela de login — a vitrine do produto. Split cinematográfico 58/42 no
- * desktop; no mobile, o painel esquerdo vira o fundo cheio da tela e o
- * formulário sobe como uma folha ancorada na base (ver `LoginForm` e a
- * seção 10 do spec de design).
+ * Tela de login — split 50/50 no desktop: painel de marca (atmosfera WebGL)
+ * à esquerda, cartão de formulário à direita. No mobile, o painel de marca
+ * some e só o cartão aparece.
  *
  * Server Component: a data por extenso do rodapé é gerada aqui, uma única
  * vez, no server, e passada pronta para o JSX — gerar `toLocaleDateString`
@@ -44,49 +45,67 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
   )
 
   return (
-    <div className="relative lg:grid lg:h-dvh lg:grid-cols-[58fr_42fr]">
+    <div className="grid min-h-dvh lg:grid-cols-2">
       {/* Abertura animada: roda uma vez por sessão, como overlay sobre a página
-          já renderizada (o formulário abaixo já está pronto quando ela sai, então
-          o LCP não é penalizado). Ao final, a logo pousa exatamente sobre a logo
-          do painel esquerdo — continuidade, não corte. */}
+          já renderizada. Ao final, a logo pousa exatamente sobre a logo do
+          painel esquerdo — continuidade, não corte. */}
       <BootSequence seletorAlvo="[data-logo-destino]" />
-      {/* Painel esquerdo — no mobile é o fundo cheio da tela (fixed inset-0);
-          no desktop volta ao fluxo normal, como a primeira coluna do grid. */}
-      <div className="fixed inset-0 z-0 overflow-hidden bg-navy lg:static lg:z-auto">
-        <LoginCanvasResponsivo className="absolute inset-0" />
 
-        <div className="relative flex h-full flex-col px-6 pt-14 lg:justify-end lg:px-16 lg:pb-16 lg:pt-16">
-          {/* Mobile: só a logo, no topo da tela cheia. */}
-          <InhausLogo variante="branca" altura={32} className="lg:hidden" />
+      {/* Painel esquerdo — atmosfera de marca, só no desktop. */}
+      <div className="relative hidden overflow-hidden bg-navy lg:block">
+        <LoginCanvasResponsivo className="absolute inset-0 h-full w-full" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-navy-deep/70 via-transparent to-transparent" />
 
-          {/* Desktop: logo + headline + subtítulo, ancorados no terço inferior
-              esquerdo. O vazio na porção superior é intencional. */}
-          <div className="hidden lg:block lg:max-w-[440px]">
+        <div className="relative z-10 flex h-full flex-col justify-between p-12">
+          <div className="flex items-center justify-center">
             <span data-logo-destino className="inline-block">
-              <InhausLogo variante="branca" altura={40} />
+              <InhausLogo variante="branca" altura={36} />
             </span>
-            <h1 className="mt-10 max-w-[13ch] font-display text-display-md text-white">
-              Todos os indicadores da In-Haus. Um só lugar.
-            </h1>
-            <p className="mt-4 max-w-[38ch] font-sans text-[15px] text-white/60">
+          </div>
+
+          <div className="max-w-md">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-white/90 backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5" />
+              Hub In-Haus
+            </span>
+            <h2 className="mt-6 font-display text-4xl font-semibold leading-tight text-white">
+              Hub de indicadores da operação
+            </h2>
+            <p className="mt-4 text-white/75">
               Segurança, RH, qualidade, treinamentos e financeiro reunidos num único painel de indicadores.
             </p>
           </div>
 
-          <div className="relative mt-10 hidden items-center justify-between lg:flex">
-            <span className="font-sans text-[13px] text-white/45">{dataPorExtenso}</span>
-            <span className="flex items-center gap-2">
-              <span aria-hidden="true" className="h-1.5 w-1.5 animate-breathe rounded-full bg-teal" />
-              <span className="text-label uppercase text-white/45">Sistema operacional</span>
-            </span>
+          <div className="flex items-center gap-2 text-sm text-white/70">
+            <CalendarDays className="h-4 w-4" />
+            {dataPorExtenso}
           </div>
         </div>
       </div>
 
-      {/* Painel direito — no mobile é a folha ancorada na base (fixed
-          bottom-0), no desktop a segunda coluna do grid, centrada. */}
-      <div className="fixed inset-x-0 bottom-0 z-10 h-[62dvh] overflow-y-auto rounded-t-[24px] bg-mist px-6 pb-10 pt-8 lg:static lg:z-auto lg:flex lg:h-dvh lg:items-center lg:justify-center lg:overflow-visible lg:rounded-none lg:px-16 lg:py-16">
-        <LoginForm proximaRota={proximaRota} />
+      {/* Painel direito — cartão de formulário. */}
+      <div className="relative flex items-center justify-center bg-background px-5 py-12 sm:px-10">
+        <div className="w-full max-w-md">
+          <div className="mb-8 flex justify-center lg:hidden">
+            <InhausLogo variante="escura" altura={28} />
+          </div>
+
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+            Bem-vindo de volta
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            Entre com sua conta corporativa para acessar o hub.
+          </p>
+
+          <div className="mt-8 rounded-lg border border-hairline bg-card p-7 shadow-lift sm:p-8">
+            <LoginForm proximaRota={proximaRota} />
+          </div>
+
+          <p className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <ShieldCheck className="h-3.5 w-3.5 text-teal" />
+            Autenticação segura
+          </p>
+        </div>
       </div>
     </div>
   )

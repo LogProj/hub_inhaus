@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { redirect } from "next/navigation"
 import { getSessionReadOnly } from "@/lib/auth-session"
+import { acessoLivreLiberado, USUARIO_DEV } from "@/lib/dev-auth"
 import { Atmosphere } from "@/components/atmosphere/Atmosphere"
 import { AppSidebar } from "@/components/shell/AppSidebar"
 import { AppTopbar } from "@/components/shell/AppTopbar"
@@ -20,6 +21,21 @@ import { CommandPalette } from "@/components/shell/CommandPalette"
  * para resolver.
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
+  // Acesso livre de desenvolvimento: permite revisar o design sem as
+  // credenciais do global_auth. Ver `src/lib/dev-auth.ts` — só funciona fora de
+  // produção E com HUB_ACESSO_LIVRE=1 no .env.local.
+  if (acessoLivreLiberado()) {
+    return (
+      <ShellDoHub
+        nome={USUARIO_DEV.nome}
+        isAdmin={USUARIO_DEV.isAdmin}
+        visibleScreens={USUARIO_DEV.visibleScreens}
+      >
+        {children}
+      </ShellDoHub>
+    )
+  }
+
   const resultado = await getSessionReadOnly()
 
   if (resultado.status === "anonimo") {
@@ -36,6 +52,25 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const nome = sessao.authorization.nome ?? sessao.user.name ?? sessao.user.email
   const { isAdmin, visibleScreens } = sessao.authorization
 
+  return (
+    <ShellDoHub nome={nome} isAdmin={isAdmin} visibleScreens={visibleScreens}>
+      {children}
+    </ShellDoHub>
+  )
+}
+
+/** A casca visual em si, separada para os dois caminhos acima compartilharem. */
+function ShellDoHub({
+  nome,
+  isAdmin,
+  visibleScreens,
+  children,
+}: {
+  nome: string
+  isAdmin: boolean
+  visibleScreens: string[]
+  children: ReactNode
+}) {
   return (
     <div className="grid h-dvh grid-cols-[auto_1fr]">
       <AppSidebar nome={nome} isAdmin={isAdmin} visibleScreens={visibleScreens} />

@@ -19,8 +19,21 @@ export const ROTA_INICIAL = "/home"
 // adicionar um domínio novo não exige lembrar de atualizar esta lista.
 const rotasPublicas = ["/login"]
 
+/**
+ * Acesso livre de desenvolvimento. A checagem é repetida aqui em vez de
+ * importar `@/lib/dev-auth` porque o middleware roda no Edge Runtime, com
+ * bundle próprio — manter esta linha independente evita arrastar o módulo
+ * inteiro para o Edge. As duas travas são as mesmas.
+ */
+function acessoLivreLiberado(): boolean {
+  return process.env.NODE_ENV !== "production" && process.env.HUB_ACESSO_LIVRE === "1"
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  if (acessoLivreLiberado()) return NextResponse.next()
+
   const temSessao =
     request.cookies.has(ACCESS_COOKIE) || request.cookies.has(REFRESH_COOKIE)
 

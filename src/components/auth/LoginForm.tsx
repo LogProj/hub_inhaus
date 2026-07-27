@@ -1,10 +1,11 @@
 "use client"
 
 /**
- * Formulário de login. Campos sem caixa (label flutuante + underline que
- * cresce no foco) e segundo fator (2FA) inline: quando a API sinaliza que o
- * segundo fator é necessário, o MESMO contêiner troca de conteúdo com um
- * slide + fade — nunca navega para outra rota.
+ * Formulário de login. Campos em caixa com ícone à esquerda e label fixa
+ * acima (padrão replicado do hub_amyris, com os tokens DESTE projeto — sem
+ * hexadecimal solto). Segundo fator (2FA): quando a API sinaliza que é
+ * necessário, o MESMO contêiner troca de conteúdo — nunca navega para outra
+ * rota.
  *
  * Contrato real da API (ver src/app/api/auth/login/route.ts e
  * src/app/api/auth/2fa/verify/route.ts):
@@ -29,21 +30,14 @@
  * (`<Atmosphere intensidade="cheia" />`) assume o lugar.
  */
 
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ClipboardEvent,
-  type FormEvent,
-  type KeyboardEvent,
-} from "react"
+import { useEffect, useId, useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import dynamicImport from "next/dynamic"
+import { Loader2, Lock, Mail, ShieldCheck } from "lucide-react"
 import { Atmosphere } from "@/components/atmosphere/Atmosphere"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+import { Label } from "@/components/ui/label"
 
 const LoginCanvasDinamico = dynamicImport(
   () => import("@/components/atmosphere/LoginCanvas").then((mod) => mod.LoginCanvas),
@@ -100,39 +94,13 @@ export function LoginForm({ proximaRota = "/home" }: LoginFormProps): JSX.Elemen
   const [email, setEmail] = useState("")
   const [senha, setSenha] = useState("")
   const [tempToken, setTempToken] = useState<string | null>(null)
-  const [codigo, setCodigo] = useState<string[]>(Array(TAMANHO_CODIGO).fill(""))
+  const [codigo, setCodigo] = useState("")
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  const [erroChave, setErroChave] = useState(0)
-  const [entrada, setEntrada] = useState(false)
 
-  const codigoRefs = useRef<Array<HTMLInputElement | null>>([])
   const idEmail = useId()
   const idSenha = useId()
-  const idCodigoBase = useId()
-
-  // Troca de etapa: slide lateral com fade, 280ms ease-calm — sem navegar.
-  useEffect(() => {
-    setEntrada(false)
-    const reduzida = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    if (reduzida) {
-      setEntrada(true)
-      return
-    }
-    const quadro = requestAnimationFrame(() => setEntrada(true))
-    return () => cancelAnimationFrame(quadro)
-  }, [etapa])
-
-  useEffect(() => {
-    if (etapa === "2fa") codigoRefs.current[0]?.focus()
-  }, [etapa])
-
-  function dispararErro(mensagem: string) {
-    setErro(mensagem)
-    // Muda a key do <p role="alert"> para remontar o elemento e reiniciar o
-    // shake mesmo quando o mesmo erro se repete duas vezes seguidas.
-    setErroChave((chave) => chave + 1)
-  }
+  const idCodigo = useId()
 
   async function aoSubmeterCredenciais(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -148,14 +116,14 @@ export function LoginForm({ proximaRota = "/home" }: LoginFormProps): JSX.Elemen
 
       if (!resposta.ok) {
         // Mensagem genérica sempre — nunca revela se o e-mail existe.
-        dispararErro(MENSAGEM_ERRO_CREDENCIAIS)
+        setErro(MENSAGEM_ERRO_CREDENCIAIS)
         return
       }
 
       const dados = (await resposta.json()) as RespostaLogin
       if ("requiresTwoFactor" in dados && dados.requiresTwoFactor) {
         setTempToken(dados.tempToken)
-        setCodigo(Array(TAMANHO_CODIGO).fill(""))
+        setCodigo("")
         setEtapa("2fa")
         return
       }
@@ -163,238 +131,146 @@ export function LoginForm({ proximaRota = "/home" }: LoginFormProps): JSX.Elemen
       router.replace(proximaRota)
       router.refresh()
     } catch {
-      dispararErro(MENSAGEM_ERRO_REDE)
+      setErro(MENSAGEM_ERRO_REDE)
     } finally {
       setCarregando(false)
     }
   }
 
-  async function verificarCodigo(codigoCompleto: string) {
-    if (!tempToken || codigoCompleto.length !== TAMANHO_CODIGO || carregando) return
+  async function aoSubmeterCodigo(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault()
+    if (!tempToken || carregando) return
     setErro(null)
     setCarregando(true)
     try {
       const resposta = await fetch("/api/auth/2fa/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tempToken, totpCode: codigoCompleto }),
+        body: JSON.stringify({ tempToken, totpCode: codigo }),
       })
 
       if (!resposta.ok) {
-        dispararErro(MENSAGEM_ERRO_CODIGO)
-        setCodigo(Array(TAMANHO_CODIGO).fill(""))
-        codigoRefs.current[0]?.focus()
+        setErro(MENSAGEM_ERRO_CODIGO)
+        setCodigo("")
         return
       }
 
       router.replace(proximaRota)
       router.refresh()
     } catch {
-      dispararErro(MENSAGEM_ERRO_REDE)
+      setErro(MENSAGEM_ERRO_REDE)
     } finally {
       setCarregando(false)
     }
-  }
-
-  function aoMudarDigito(indice: number, valorBruto: string) {
-    const digito = valorBruto.replace(/\D/g, "").slice(-1)
-    const proximo = [...codigo]
-    proximo[indice] = digito
-    setCodigo(proximo)
-
-    if (digito && indice < TAMANHO_CODIGO - 1) {
-      codigoRefs.current[indice + 1]?.focus()
-    }
-    if (proximo.every((d) => d !== "")) {
-      void verificarCodigo(proximo.join(""))
-    }
-  }
-
-  function aoTeclarDigito(indice: number, evento: KeyboardEvent<HTMLInputElement>) {
-    if (evento.key === "Backspace" && !codigo[indice] && indice > 0) {
-      codigoRefs.current[indice - 1]?.focus()
-    }
-  }
-
-  function aoColarCodigo(evento: ClipboardEvent<HTMLInputElement>) {
-    const texto = evento.clipboardData.getData("text").replace(/\D/g, "").slice(0, TAMANHO_CODIGO)
-    if (!texto) return
-    evento.preventDefault()
-
-    const proximo = Array(TAMANHO_CODIGO).fill("")
-    texto.split("").forEach((digito, indice) => {
-      proximo[indice] = digito
-    })
-    setCodigo(proximo)
-
-    const indiceFoco = Math.min(texto.length, TAMANHO_CODIGO - 1)
-    codigoRefs.current[indiceFoco]?.focus()
-
-    if (texto.length === TAMANHO_CODIGO) void verificarCodigo(texto)
   }
 
   function voltarParaCredenciais() {
     setEtapa("credenciais")
     setErro(null)
     setTempToken(null)
-    setCodigo(Array(TAMANHO_CODIGO).fill(""))
+    setCodigo("")
   }
 
   return (
-    <div className="w-full max-w-[380px]">
-      {/* Contêiner de altura fixa: a troca de etapa nunca pula o layout. */}
-      <div className="relative min-h-[26rem] overflow-hidden">
+    <div className="w-full">
+      {erro && (
         <div
-          key={etapa}
-          className={cn(
-            "transition-all duration-[280ms] ease-calm",
-            entrada ? "translate-x-0 opacity-100" : "-translate-x-4 opacity-0",
-          )}
+          role="alert"
+          aria-live="polite"
+          className="mb-5 rounded-md border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger"
         >
-          {etapa === "credenciais" ? (
-            <form onSubmit={aoSubmeterCredenciais} noValidate>
-              <h1 className="font-display text-display-sm text-foreground">Entrar</h1>
-              <p className="mt-2 font-sans text-sm text-muted-foreground">
-                Acesse o hub de indicadores da In-Haus.
-              </p>
-
-              <div className="mt-10 space-y-8">
-                <div className="relative flex h-12 items-end">
-                  <Input
-                    id={idEmail}
-                    type="email"
-                    autoComplete="email"
-                    required
-                    placeholder=" "
-                    value={email}
-                    onChange={(evento) => setEmail(evento.target.value)}
-                    aria-invalid={erro ? true : undefined}
-                    className="pt-4 pb-1.5"
-                  />
-                  <label
-                    htmlFor={idEmail}
-                    className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 font-sans text-[15px] text-muted-foreground transition-all duration-[240ms] ease-calm peer-focus:top-0 peer-focus:translate-y-0 peer-focus:text-label peer-focus:text-teal peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-label peer-[:not(:placeholder-shown)]:text-teal"
-                  >
-                    E-mail
-                  </label>
-                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[1.5px] bg-hairline" />
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-x-0 bottom-0 h-[1.5px] origin-left scale-x-0 bg-teal transition-transform duration-[240ms] ease-calm peer-focus:scale-x-100"
-                  />
-                </div>
-
-                <div className="relative flex h-12 items-end">
-                  <Input
-                    id={idSenha}
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    placeholder=" "
-                    value={senha}
-                    onChange={(evento) => setSenha(evento.target.value)}
-                    aria-invalid={erro ? true : undefined}
-                    className="pt-4 pb-1.5"
-                  />
-                  <label
-                    htmlFor={idSenha}
-                    className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 font-sans text-[15px] text-muted-foreground transition-all duration-[240ms] ease-calm peer-focus:top-0 peer-focus:translate-y-0 peer-focus:text-label peer-focus:text-teal peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-label peer-[:not(:placeholder-shown)]:text-teal"
-                  >
-                    Senha
-                  </label>
-                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-[1.5px] bg-hairline" />
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-x-0 bottom-0 h-[1.5px] origin-left scale-x-0 bg-teal transition-transform duration-[240ms] ease-calm peer-focus:scale-x-100"
-                  />
-                </div>
-              </div>
-
-              {erro && (
-                <p key={erroChave} role="alert" className="mt-6 animate-shake font-sans text-sm text-danger">
-                  {erro}
-                </p>
-              )}
-
-              <Button type="submit" size="lg" className={cn(erro ? "mt-6" : "mt-10")} disabled={carregando} aria-busy={carregando}>
-                {carregando ? <PontosDeCarregamento /> : "Entrar"}
-              </Button>
-            </form>
-          ) : (
-            <div>
-              <h1 className="font-display text-display-sm text-foreground">Verificação em duas etapas</h1>
-              <p className="mt-2 font-sans text-sm text-muted-foreground">
-                Digite o código de 6 dígitos do seu aplicativo autenticador.
-              </p>
-
-              <div
-                role="group"
-                aria-label="Código de verificação de 6 dígitos"
-                className="mt-10 flex justify-between gap-2"
-              >
-                {codigo.map((digito, indice) => {
-                  const idDigito = `${idCodigoBase}-digito-${indice}`
-                  return (
-                    <div key={indice}>
-                      <label htmlFor={idDigito} className="sr-only">
-                        Dígito {indice + 1} do código
-                      </label>
-                      <Input
-                        id={idDigito}
-                        ref={(el) => {
-                          codigoRefs.current[indice] = el
-                        }}
-                        variant="box"
-                        inputMode="numeric"
-                        autoComplete={indice === 0 ? "one-time-code" : "off"}
-                        maxLength={1}
-                        value={digito}
-                        aria-invalid={erro ? true : undefined}
-                        onChange={(evento) => aoMudarDigito(indice, evento.target.value)}
-                        onKeyDown={(evento) => aoTeclarDigito(indice, evento)}
-                        onPaste={aoColarCodigo}
-                        className="h-14 w-11 text-center font-mono text-lg tabular-nums"
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-
-              {erro && (
-                <p key={erroChave} role="alert" className="mt-6 animate-shake font-sans text-sm text-danger">
-                  {erro}
-                </p>
-              )}
-
-              <Button
-                type="button"
-                size="lg"
-                className={cn(erro ? "mt-6" : "mt-10")}
-                disabled={carregando || codigo.some((d) => !d)}
-                aria-busy={carregando}
-                onClick={() => void verificarCodigo(codigo.join(""))}
-              >
-                {carregando ? <PontosDeCarregamento /> : "Verificar"}
-              </Button>
-
-              <Button type="button" variant="link" size="sm" className="mt-4 px-0" onClick={voltarParaCredenciais}>
-                Usar outra conta
-              </Button>
-            </div>
-          )}
+          {erro}
         </div>
-      </div>
-    </div>
-  )
-}
+      )}
 
-/** Estado de carregando do botão: três pontos em respiração, escalonados. */
-function PontosDeCarregamento(): JSX.Element {
-  return (
-    <span className="flex items-center gap-1.5" aria-hidden="true">
-      <span className="h-1 w-1 animate-breathe rounded-full bg-white" style={{ animationDelay: "0ms" }} />
-      <span className="h-1 w-1 animate-breathe rounded-full bg-white" style={{ animationDelay: "120ms" }} />
-      <span className="h-1 w-1 animate-breathe rounded-full bg-white" style={{ animationDelay: "240ms" }} />
-    </span>
+      {etapa === "credenciais" ? (
+        <form onSubmit={aoSubmeterCredenciais} noValidate className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor={idEmail}>E-mail corporativo</Label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id={idEmail}
+                type="email"
+                variant="box"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(evento) => setEmail(evento.target.value)}
+                placeholder="voce@inhaus.com.br"
+                aria-invalid={erro ? true : undefined}
+                className="h-11 pl-10"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={idSenha}>Senha</Label>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id={idSenha}
+                type="password"
+                variant="box"
+                autoComplete="current-password"
+                required
+                value={senha}
+                onChange={(evento) => setSenha(evento.target.value)}
+                placeholder="••••••••"
+                aria-invalid={erro ? true : undefined}
+                className="h-11 pl-10"
+              />
+            </div>
+          </div>
+
+          <Button type="submit" size="lg" className="w-full" disabled={carregando} aria-busy={carregando}>
+            {carregando && <Loader2 className="h-4 w-4 animate-spin" />}
+            {carregando ? "Entrando…" : "Entrar"}
+          </Button>
+        </form>
+      ) : (
+        <form onSubmit={aoSubmeterCodigo} noValidate className="space-y-5">
+          <div className="flex items-center gap-3 rounded-md border border-teal/15 bg-teal/5 px-4 py-3 text-sm text-teal">
+            <ShieldCheck className="h-5 w-5 shrink-0" />
+            Verificação em duas etapas ativada. Informe o código do seu aplicativo autenticador.
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={idCodigo}>Código de verificação</Label>
+            <Input
+              id={idCodigo}
+              variant="box"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+              value={codigo}
+              onChange={(evento) => setCodigo(evento.target.value.replace(/\D/g, "").slice(0, TAMANHO_CODIGO))}
+              placeholder="000000"
+              aria-invalid={erro ? true : undefined}
+              className="h-11 text-center text-lg tracking-[0.5em]"
+            />
+          </div>
+
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={carregando || codigo.length !== TAMANHO_CODIGO}
+            aria-busy={carregando}
+          >
+            {carregando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+            {carregando ? "Verificando…" : "Verificar e entrar"}
+          </Button>
+
+          <button
+            type="button"
+            onClick={voltarParaCredenciais}
+            className="w-full text-center text-sm text-muted-foreground hover:text-teal"
+          >
+            Usar outra conta
+          </button>
+        </form>
+      )}
+    </div>
   )
 }
