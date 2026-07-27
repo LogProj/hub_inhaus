@@ -1,10 +1,13 @@
 import type { Metadata } from "next"
-import { Sparkles, ShieldCheck } from "lucide-react"
+import Link from "next/link"
+import { Sparkles, ShieldCheck, ArrowRight } from "lucide-react"
 
 import { FluxoCanvas } from "@/components/login/FluxoCanvas"
 import { LoginIntro } from "@/components/login/LoginIntro"
 import { LoginForm } from "@/components/auth/LoginForm"
 import { InhausLogo } from "@/components/brand/InhausLogo"
+import { Button } from "@/components/ui/button"
+import { acessoLivreLiberado } from "@/lib/dev-auth"
 
 export const metadata: Metadata = {
   title: "Entrar",
@@ -73,6 +76,24 @@ export default function LoginPage() {
             <ShieldCheck className="h-3.5 w-3.5 text-teal" />
             Autenticação segura
           </p>
+
+          {/* Atalho de acesso — só no modo de desenvolvimento (acesso livre),
+              para revisar o hub sem as credenciais do global_auth. Nunca aparece
+              em produção. */}
+          {acessoLivreLiberado() && (
+            <div className="reveal delay-3 mt-8 rounded-2xl border border-dashed border-teal/30 bg-teal-tint/50 p-4 text-center">
+              <p className="text-xs font-medium text-navy">Modo de desenvolvimento</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Entre no hub sem autenticar para revisar os painéis.
+              </p>
+              <Button asChild variant="gradient" size="sm" className="mt-3">
+                <Link href="/dashboards">
+                  Acessar o hub
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>
