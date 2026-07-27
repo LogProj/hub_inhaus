@@ -1,0 +1,33 @@
+// hub_inhaus — modelo local de AUTORIZAÇÃO.
+// A identidade (login/senha/ativo global) vive no global_auth; aqui guardamos só
+// QUEM pode entrar neste sistema (acesso) e se é ADMIN, ligado pelo UUID do
+// global_auth (`authUserId`, preenchido no 1º login pelo e-mail).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Acesso local ao hub. Um usuário do global_auth só entra se tiver uma linha aqui
+// com `hasAccess = true` (o admin concede). `isAdmin` libera a tela de Usuários.
+model AuthUser {
+  id             Int       @id @default(autoincrement())
+  authUserId     String?   @unique @map("auth_user_id")
+  email          String    @unique
+  name           String?
+  isAdmin        Boolean   @default(false) @map("is_admin")
+  hasAccess      Boolean   @default(false) @map("has_access")
+  // Telas locais que este usuário pode visualizar (autorização DESTE projeto — nunca
+  // no global_auth). Guarda as chaves de TODAS_AS_TELAS (ver src/lib/domains.ts). Admin
+  // enxerga tudo, independente do que estiver aqui.
+  visibleScreens String[]  @default([]) @map("visible_screens")
+  lastLoginAt    DateTime? @map("last_login_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@map("auth_users")
+}
