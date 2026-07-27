@@ -1,30 +1,29 @@
-import { forwardRef, type ButtonHTMLAttributes } from "react"
+import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+
 import { cn } from "@/lib/utils"
 
-/**
- * Botão base do design system. Segue o padrão shadcn (cva + `asChild` via
- * Radix Slot), mas com a paleta e o motion DESTE projeto — nunca a paleta
- * padrão do shadcn. Sem hexadecimal solto: só tokens (`bg-teal`, `bg-muted`,
- * `border-hairline`...).
- */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-sans text-sm font-medium transition-colors duration-[240ms] ease-calm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-60",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-teal text-white hover:bg-teal-bright",
+        default:
+          "bg-navy text-white shadow-[0_10px_30px_-12px_rgba(0,36,67,0.6)] hover:bg-navy-deep hover:shadow-glow hover:-translate-y-0.5 active:translate-y-0",
+        gradient:
+          "bg-inhaus-grad text-white shadow-glow hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0",
         outline:
-          "border border-hairline bg-transparent text-foreground hover:border-teal/30",
-        ghost: "bg-transparent text-foreground hover:bg-muted",
-        link: "bg-transparent text-teal underline-offset-4 hover:underline",
+          "border border-navy/20 bg-white/70 text-navy backdrop-blur hover:bg-teal-tint hover:border-teal/40 hover:-translate-y-0.5",
+        ghost: "text-navy hover:bg-teal-tint",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        link: "text-teal underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4",
-        lg: "h-12 w-full px-6 text-[15px]",
-        sm: "h-8 px-3 text-[13px]",
-        icon: "h-9 w-9",
+        default: "h-11 px-6 py-2",
+        sm: "h-9 px-4",
+        lg: "h-12 px-8 text-base",
+        icon: "h-10 w-10",
       },
     },
     defaultVariants: {
@@ -35,24 +34,17 @@ const buttonVariants = cva(
 )
 
 export interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
-  /** Renderiza como o filho (via Radix Slot) em vez de um `<button>` próprio. */
   asChild?: boolean
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
-    return (
-      <Comp
-        ref={ref}
-        className={cn(buttonVariants({ variant, size }), className)}
-        {...props}
-      />
-    )
+    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
   },
 )
 Button.displayName = "Button"
 
-export { buttonVariants }
+export { Button, buttonVariants }

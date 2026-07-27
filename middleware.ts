@@ -2,9 +2,9 @@
 // PRESENÇA do cookie de sessão; não toca no banco nem valida o token. É apenas uma
 // otimização de UX (evita renderizar a rota para quem obviamente não tem cookie).
 // A validação REAL (token válido no global_auth + autorização local) acontece
-// server-side no layout protegido (src/app/(app)/layout.tsx via getCurrentSession)
-// e nas rotas via requireSession/requireAdmin. NUNCA confie só neste middleware
-// para proteger uma rota.
+// server-side no layout protegido (src/app/dashboards/layout.tsx via
+// getSessionReadOnly) e nas rotas via requireSession/requireAdmin. NUNCA confie
+// só neste middleware para proteger uma rota.
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
@@ -12,12 +12,13 @@ const COOKIE_PREFIX = "inhaus"
 const ACCESS_COOKIE = `${COOKIE_PREFIX}_access_token`
 const REFRESH_COOKIE = `${COOKIE_PREFIX}_refresh_token`
 
-/** Onde o usuário logado cai. É a Home "mission control". */
-export const ROTA_INICIAL = "/home"
+/** Onde o usuário logado cai: o shell dos dashboards. */
+export const ROTA_INICIAL = "/dashboards"
 
 // Tudo que NÃO exige sessão. O resto do app é protegido por padrão — assim,
 // adicionar um domínio novo não exige lembrar de atualizar esta lista.
-const rotasPublicas = ["/login"]
+// `/home` é a landing (hero) pública, preservada fora do fluxo principal.
+const rotasPublicas = ["/login", "/home"]
 
 /**
  * Acesso livre de desenvolvimento. A checagem é repetida aqui em vez de

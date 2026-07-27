@@ -1,74 +1,137 @@
-@import "../styles/tokens.css";
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* As fontes Geist expõem os próprios nomes; aqui viram os nomes do design system. */
-    --font-sans: var(--font-geist-sans);
-    --font-mono: var(--font-geist-mono);
+    /* Tema In-Haus — mist quase branco + navy profundo da marca (#002443),
+       acento teal (#027193). Mesma estrutura do hub Amyris, recolorida. */
+    --background: 210 33% 98%;
+    --foreground: 205 55% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 205 55% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 205 55% 12%;
+    --primary: 205 100% 13%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 200 30% 96%;
+    --secondary-foreground: 205 40% 16%;
+    --muted: 200 24% 95%;
+    --muted-foreground: 205 12% 40%;
+    --accent: 193 96% 29%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 356 70% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 200 24% 88%;
+    --input: 200 24% 88%;
+    --ring: 193 96% 34%;
+    --radius: 0.85rem;
+  }
+
+  * {
+    @apply border-border;
   }
 
   html {
     @apply antialiased;
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
-  }
-
-  /* Números nunca dançam ao atualizar. */
-  .tabular,
-  table,
-  [data-metric] {
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* Foco sempre visível, sempre teal. */
-  :focus-visible {
-    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+    @apply bg-background text-foreground;
   }
 
   ::selection {
-    background-color: hsl(var(--teal) / 0.2);
+    background-color: rgba(2, 113, 147, 0.22);
+  }
+}
+
+@layer components {
+  /* Vidro fosco premium para cards/painéis sobre fundos coloridos. */
+  .glass {
+    @apply border border-white/60 bg-white/70 backdrop-blur-xl;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.6) inset,
+      0 18px 50px -24px rgba(0, 36, 67, 0.4);
+  }
+
+  /* Texto com gradiente da marca. */
+  .text-gradient {
+    @apply bg-inhaus-grad bg-clip-text text-transparent;
+  }
+
+  /* Pílula/etiqueta de seção. */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-teal/15 bg-teal-tint px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-teal;
   }
 }
 
 @layer utilities {
-  /* Entrada escalonada de irmãos — 60ms entre cada um. */
-  .stagger > * {
-    animation: rise-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Brilho que segue o cursor nos TiltCard. */
+  .tilt-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+      460px circle at var(--mx, 50%) var(--my, 0%),
+      rgba(2, 113, 147, 0.16),
+      transparent 60%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
   }
-  .stagger > *:nth-child(1) {
-    animation-delay: 0ms;
+  .tilt-card:hover::after {
+    opacity: 1;
   }
-  .stagger > *:nth-child(2) {
-    animation-delay: 60ms;
-  }
-  .stagger > *:nth-child(3) {
-    animation-delay: 120ms;
-  }
-  .stagger > *:nth-child(4) {
-    animation-delay: 180ms;
-  }
-  .stagger > *:nth-child(5) {
-    animation-delay: 240ms;
-  }
-  .stagger > *:nth-child(6) {
-    animation-delay: 300ms;
-  }
-}
 
-/* Motion sussurra — e cala quando pedem. */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  /* Entrada escalonada de elementos. */
+  .reveal {
+    animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .delay-1 { animation-delay: 0.08s; }
+  .delay-2 { animation-delay: 0.16s; }
+  .delay-3 { animation-delay: 0.24s; }
+  .delay-4 { animation-delay: 0.32s; }
+  .delay-5 { animation-delay: 0.4s; }
+
+  /* Grade pontilhada sutil (fundo de seções internas). */
+  .bg-dots {
+    background-image: radial-gradient(rgba(0, 36, 67, 0.08) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  .animate-marquee {
+    animation: marquee 28s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    .reveal,
+    .animate-marquee,
+    .animate-float {
+      animation: none !important;
+    }
+    .tilt-card {
+      transform: none !important;
+    }
   }
 }

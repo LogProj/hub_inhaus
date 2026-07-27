@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation"
 
-/**
- * A raiz não tem conteúdo próprio: manda para a Home. Quem não tem sessão é
- * desviado para o login pelo middleware, com `?next=/home` preservado.
- */
-export default function RaizPage() {
-  redirect("/home")
+// A landing (hero) fica OCULTA por enquanto: a entrada do sistema vai direto
+// para os dashboards. A tela de boas-vindas está preservada em /home para
+// reativarmos depois (basta apontar a raiz para ela).
+export default function RootPage() {
+  redirect("/dashboards")
 }

@@ -31,41 +31,44 @@ executadas por agentes Sonnet lançados pelo orquestrador.**
 
 ## Direção de design (não negociável)
 
-O padrão é o de um SaaS de US$ 20.000, avaliado contra o checklist "The $10K Checklist".
-Antes de finalizar qualquer tela, verifique-a contra os 8 itens do checklist — eles estão
-mapeados seção a seção no spec.
+O hub adota o **mesmo layout e tratamento visual do `hub_amyris`**, recolorido para a
+identidade da In-Haus. Decisão do cliente (2026-07-27), depois de ver a primeira versão.
 
 Princípios que não podem ser violados:
 
-1. **Profundidade no ambiente. Planura nos dados.** Fundos têm atmosfera; superfícies
-   que carregam número são planas e neutras. Sem glass, gradiente ou sombra colorida
-   dentro de painel de dados.
-2. **Paleta de 3 cores de marca + 3 semânticas.** `#002443` navy (estrutura),
-   `#F2F3F8` mist (superfície), `#027193` teal (ação). As semânticas só aparecem
-   quando o dado exige.
-3. **Tipografia:** Bricolage Grotesque (display) + Geist (texto) + Geist Mono (números,
-   sempre com `tabular-nums`). **Nunca** Inter ou Roboto.
-4. **Shell é sempre navy**, nos dois temas. Só o canvas de conteúdo troca.
-   Tema **claro é o padrão**.
-5. **Motion sussurra.** Easing `cubic-bezier(0.22, 1, 0.36, 1)`, `240–320ms`. Sem
-   fade-up genérico em tudo. `prefers-reduced-motion` sempre respeitado.
-6. **Sem fotografia.** Nenhuma imagem de banco. Toda expressão visual é gerada em
-   SVG/canvas.
-7. **Acessibilidade não é opcional.** Contraste AA nos dois temas, navegação completa
-   por teclado com anel de foco teal visível, HTML semântico de verdade.
+1. **Recolorir, não redesenhar.** A estrutura é a do Amyris: hero WebGL, shell com
+   sidebar fixa (`w-72`) sobre `bg-inhaus-radial` + topbar com blur, cards de vidro
+   (`.glass`), `TiltCard`, gradiente de marca, cantos `rounded-3xl`.
+2. **Paleta In-Haus.** `#002443` navy (estrutura, substitui o roxo do Amyris),
+   `#027193` teal (acento/ação, da logo), `#F2F3F8` mist (superfície). Gradiente de
+   marca `bg-inhaus-grad` (navy→teal). Nada de roxo/lilás em lugar nenhum.
+3. **Tipografia igual à do Amyris:** Space Grotesk (display) + Inter (texto).
+4. **Marca In-Haus.** A logo In-Haus é a marca principal (`InhausLogo`); use `onDark`
+   sobre fundos navy. Não existe mais logo de cliente separada.
+5. **Motion do Amyris:** `.reveal` (fade-up escalonado com `.delay-1..5`), `TiltCard`,
+   hover com elevação. `prefers-reduced-motion` sempre respeitado (já tratado no
+   `globals.css`).
+6. **Acessibilidade não é opcional.** Contraste AA, navegação por teclado com foco
+   visível, HTML semântico de verdade.
 
-Cores, espaçamentos e raios vêm **sempre** dos tokens em `src/styles/tokens.css` via
-Tailwind. Valor hexadecimal solto em componente é erro de revisão.
+Cores, raios e sombras vêm **sempre** dos tokens do Tailwind (`bg-navy`, `text-teal`,
+`bg-inhaus-grad`, `.glass`, `.eyebrow`, `shadow-glow`, etc.), definidos em
+`tailwind.config.ts` e `src/app/globals.css`. Valor hexadecimal solto em componente é
+erro de revisão — a única exceção é dentro do shader do `HeroCanvas`.
+
+Referência viva: quando em dúvida sobre um componente, olhe o equivalente em
+`C:\Users\fernando.c.souza\Projetos\hub_amyris` e replique a estrutura, trocando as
+cores/tokens roxos pelos de navy/teal.
 
 ---
 
 ## Stack
 
 Next.js 14 (App Router) · TypeScript · Tailwind · shadcn/ui · Prisma + Postgres ·
-Recharts · `ogl` (WebGL apenas no login).
+Recharts · `ogl` (WebGL do hero).
 
-Server Components por padrão. `"use client"` restrito a: atmosfera, command palette,
-toggle de tema, gráficos e formulário de login.
+Server Components por padrão. `"use client"` restrito a: hero canvas, shell (drawer
+mobile / sessão), `TiltCard`, gráficos e formulário de login.
 
 ---
 
