@@ -200,6 +200,38 @@ Vocabulário único, aplicado com parcimônia:
 
 ## 10. Tela de Login
 
+> **Revisão de 2026-07-27, depois da primeira entrega.** O cliente viu a versão
+> implementada e pediu o formato da tela de login do `hub_amyris`. O que vale hoje é
+> a seção **10-A**; a **10-B** fica registrada como o desenho original, para não se
+> perder o raciocínio caso a decisão seja revista.
+
+### 10-A. Formato vigente — split 50/50 com cartão
+
+Divisão **50 / 50** (`lg:grid-cols-2`), como no `hub_amyris`.
+
+**Painel esquerdo, navy, só no desktop:** canvas WebGL com a atmosfera completa e um
+overlay `bg-gradient-to-tr from-navy-deep/70`. Conteúdo em três blocos verticais:
+logo In-Haus branca centralizada no topo, bloco central com pílula "Hub In-Haus" +
+headline em Bricolage Grotesque + parágrafo, e a data por extenso no rodapé.
+
+**Painel direito, sobre o canvas claro:** coluna de `max-width: 28rem` centrada, com
+logo escura visível só no mobile, título "Bem-vindo de volta", subtítulo, e o
+formulário **dentro de um cartão** (`rounded-lg border border-hairline bg-card
+shadow-lift`). Abaixo do cartão, a linha "Autenticação segura" com ícone em teal.
+
+**Formulário:** campos **em caixa**, com `<label>` fixa acima e ícone à esquerda
+(`Mail`, `Lock`). Erro num bloco `role="alert"` acima do formulário. Botão primário
+teal com spinner. O segundo fator é um campo único de código, no mesmo cartão.
+
+**Mobile:** o painel esquerdo desaparece e resta a coluna do cartão, centrada. O
+WebGL não é instanciado abaixo de 1024px.
+
+Consequência assumida: esta versão é mais convencional que a original e usa a
+elevação de cartão que o resto do sistema evita. É uma exceção deliberada, restrita
+à tela de login — nenhum painel de dados ganha cartão elevado por causa disso.
+
+### 10-B. Desenho original (substituído)
+
 Divisão **58 / 42**. A assimetria é deliberada — sinaliza que alguém decidiu isso.
 
 ### Painel esquerdo (58%) — navy, full-bleed
