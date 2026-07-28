@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { ChevronDown, Check, Search, SlidersHorizontal } from "lucide-react"
+import { ChevronDown, Check, Search, SlidersHorizontal, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { tituloNome } from "@/lib/nomes"
@@ -37,6 +37,12 @@ export function FiltrosQuadro({ opcoes, atual }: Props) {
     router.push(qs ? `${pathname}?${qs}` : pathname)
   }
 
+  /** Selecionar TODAS as opções equivale a nenhum filtro (todos). Só conta como
+   *  filtro quando é uma seleção isolada (um subconjunto). */
+  const normalizar = (v: string[], total: number) => (v.length >= total ? [] : v)
+
+  const limpar = () => router.push(pathname)
+
   const opcoesGerente: ComboOption[] = opcoes.gerentes.map((g) => ({
     value: g,
     label: tituloNome(g),
@@ -47,22 +53,82 @@ export function FiltrosQuadro({ opcoes, atual }: Props) {
     label: m.rotulo,
   }))
 
+  const [aberto, setAberto] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const ativos =
+    atual.gerentes.length + atual.crs.length + atual.meses.length + atual.cargosExcluidos.length
+
+  useEffect(() => {
+    if (!aberto) return
+    const fora = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false)
+    }
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAberto(false)
+    }
+    document.addEventListener("mousedown", fora)
+    document.addEventListener("keydown", esc)
+    return () => {
+      document.removeEventListener("mousedown", fora)
+      document.removeEventListener("keydown", esc)
+    }
+  }, [aberto])
+
   return (
-    <div className="glass reveal relative z-30 rounded-3xl p-5">
-      <div className="mb-4 flex items-center gap-2 text-sm font-medium text-navy">
+    <div ref={ref} className="relative z-30">
+      {/* Filtros ocultos: só aparecem, suspensos, ao clicar no botão. */}
+      <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        aria-expanded={aberto}
+        aria-haspopup="dialog"
+        className="inline-flex h-10 items-center gap-2 rounded-full border border-navy/15 bg-white/80 px-4 text-sm font-medium text-navy shadow-card backdrop-blur transition-colors hover:border-teal/40"
+      >
         <SlidersHorizontal className="h-4 w-4 text-teal" />
         Filtros
-        <span className="text-xs font-normal text-muted-foreground">
-          · você pode escolher mais de um em cada
-        </span>
+        {ativos > 0 && (
+          <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-teal px-1.5 text-xs font-semibold text-white">
+            {ativos}
+          </span>
+        )}
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform",
+            aberto && "rotate-180",
+          )}
+        />
+      </button>
+        {ativos > 0 && (
+          <button
+            type="button"
+            onClick={limpar}
+            className="inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-teal"
+          >
+            <X className="h-4 w-4" />
+            Limpar filtros
+          </button>
+        )}
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+      {!aberto ? null : (
+        <div className="absolute left-0 top-full z-40 mt-2 w-[min(92vw,60rem)] rounded-3xl border border-navy/10 bg-white p-5 shadow-soft">
+          <div className="mb-4 flex items-center justify-between">
+            <span className="flex items-center gap-2 text-sm font-medium text-navy">
+              <SlidersHorizontal className="h-4 w-4 text-teal" />
+              Filtros
+            </span>
+            <span className="text-xs text-muted-foreground">
+              você pode escolher mais de um em cada
+            </span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <span className="mb-1.5 block text-xs font-medium text-muted-foreground">Gerente</span>
           <MultiCombobox
             ariaLabel="Filtrar por gerente"
             values={atual.gerentes}
-            onChange={(v) => navegar({ gerentes: v })}
+            onChange={(v) => navegar({ gerentes: normalizar(v, opcoes.gerentes.length) })}
             options={opcoesGerente}
             placeholder="Todos os gerentes"
           />
@@ -75,7 +141,7 @@ export function FiltrosQuadro({ opcoes, atual }: Props) {
           <MultiCombobox
             ariaLabel="Filtrar por centro de resultado"
             values={atual.crs}
-            onChange={(v) => navegar({ crs: v })}
+            onChange={(v) => navegar({ crs: normalizar(v, opcoes.crs.length) })}
             options={opcoesCr}
             placeholder="Todos os CRs"
           />
@@ -86,7 +152,7 @@ export function FiltrosQuadro({ opcoes, atual }: Props) {
           <MultiCombobox
             ariaLabel="Filtrar por mês"
             values={atual.meses}
-            onChange={(v) => navegar({ meses: v })}
+            onChange={(v) => navegar({ meses: normalizar(v, opcoes.meses.length) })}
             options={opcoesMes}
             placeholder="Mais recente"
           />
@@ -99,8 +165,10 @@ export function FiltrosQuadro({ opcoes, atual }: Props) {
             excluidos={atual.cargosExcluidos}
             onAplicar={(cargosExcluidos) => navegar({ cargosExcluidos })}
           />
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

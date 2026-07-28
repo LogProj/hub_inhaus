@@ -3,7 +3,6 @@ import {
   Users, UserCheck, Plane, HeartPulse, UserMinus, LineChart, Building2, Briefcase,
 } from "lucide-react"
 
-import { TiltCard } from "@/components/TiltCard"
 import { InfoIndicador } from "@/components/dashboard/InfoIndicador"
 import { FiltrosQuadro } from "@/components/dashboard/FiltrosQuadro"
 import { LinhaQuadro } from "@/components/dashboard/LinhaQuadro"
@@ -77,7 +76,7 @@ export default async function ControleQuadroPage({
   const cargosIncluidos = opcoes ? opcoes.cargos.length - cargosExcluidos.length : 0
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
+    <div className="space-y-8">
       {/* Cabeçalho */}
       <section className="reveal">
         <span className="eyebrow">
@@ -145,46 +144,38 @@ export default async function ControleQuadroPage({
         </div>
       ) : (
         <>
-          {/* Total + desligamentos */}
-          <section className="grid gap-5 lg:grid-cols-2">
-            <TiltCard max={4}>
-              <div className="glass reveal relative h-full overflow-hidden rounded-3xl p-7">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-tint text-teal">
-                  <Users className="h-5 w-5" />
-                </span>
-                <p className="mt-5 text-sm font-medium text-muted-foreground">
-                  Total de colaboradores
-                </p>
-                <p className="mt-1 font-display text-5xl font-semibold tracking-tight text-foreground">
-                  {nf(dados.totalQuadro)}
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {crs.length ? `${crs.length} CR(s) selecionado(s)` : "todos os centros de resultado"}
-                  {cargosExcluidos.length > 0 && opcoes
-                    ? ` · ${cargosIncluidos} de ${opcoes.cargos.length} cargos`
-                    : null}
-                </p>
-              </div>
-            </TiltCard>
-
-            <div className="glass reveal relative overflow-hidden rounded-3xl p-7">
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-tint text-teal">
-                <UserMinus className="h-5 w-5" />
+          {/* Cards principais — lado a lado, ocupando a largura toda */}
+          <section className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-5">
+            <div className="glass reveal relative overflow-hidden rounded-3xl p-6">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-tint text-teal">
+                <Users className="h-5 w-5" />
               </span>
-              <p className="mt-5 text-sm font-medium text-muted-foreground">Desligamentos no mês</p>
-              <p className="mt-1 font-display text-5xl font-semibold tracking-tight text-foreground">
-                {nf(dados.desligamentosMes)}
+              <p className="mt-4 text-sm font-medium text-muted-foreground">
+                Total de colaboradores
               </p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {dados.desligamentosMes === 0
-                  ? "Nenhum desligamento registrado no período."
-                  : "pessoas com desligamento no mês"}
+              <p className="mt-1 font-display text-3xl font-semibold tracking-tight text-foreground">
+                {nf(dados.totalQuadro)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {cargosExcluidos.length > 0 && opcoes
+                  ? `${cargosIncluidos} de ${opcoes.cargos.length} cargos`
+                  : "todos os cargos"}
               </p>
             </div>
-          </section>
 
-          {/* Situação */}
-          <section className="grid gap-5 sm:grid-cols-3">
+            <div className="glass reveal relative overflow-hidden rounded-3xl p-6">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-tint text-teal">
+                <UserMinus className="h-5 w-5" />
+              </span>
+              <p className="mt-4 text-sm font-medium text-muted-foreground">Desligamentos no mês</p>
+              <p className="mt-1 font-display text-3xl font-semibold tracking-tight text-foreground">
+                {nf(dados.desligamentosMes)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {dados.desligamentosMes === 0 ? "Nenhum no período" : "no mês"}
+              </p>
+            </div>
+
             {dados.porSituacao.map((s, i) => {
               const rotulo = LABEL_SITUACAO[s.rotulo] ?? s.rotulo
               const Icone = ICONE_SITUACAO[rotulo] ?? UserCheck
@@ -192,28 +183,21 @@ export default async function ControleQuadroPage({
                 <div
                   key={s.rotulo}
                   className="glass reveal relative overflow-hidden rounded-3xl p-6"
-                  style={{ animationDelay: `${i * 0.06}s` }}
+                  style={{ animationDelay: `${(i + 2) * 0.05}s` }}
                 >
                   <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-tint text-teal">
                     <Icone className="h-5 w-5" />
                   </span>
-                  <p className="mt-4 text-sm font-medium text-foreground">{rotulo}</p>
-                  <div className="mt-1 flex items-baseline gap-2">
-                    <span className="font-display text-2xl font-semibold text-foreground">
-                      {nf(s.total)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {pct(s.total, dados!.totalQuadro)} do quadro
-                    </span>
-                  </div>
+                  <p className="mt-4 text-sm font-medium text-muted-foreground">{rotulo}</p>
+                  <p className="mt-1 font-display text-3xl font-semibold tracking-tight text-foreground">
+                    {nf(s.total)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {pct(s.total, dados!.totalQuadro)} do quadro
+                  </p>
                 </div>
               )
             })}
-            {dados.porSituacao.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Nenhuma pessoa no quadro com os filtros atuais.
-              </p>
-            )}
           </section>
 
           {/* Linha do tempo — por data de referência */}
