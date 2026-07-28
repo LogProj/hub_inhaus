@@ -45,7 +45,10 @@ export type ControleQuadro = {
   totalQuadro: number
   desligamentosMes: number
   porSituacao: Fatia[]
+  /** Quadro ativo em cada data de referência (fotografia real). */
   linhaDoTempo: PontoLinha[]
+  /** Quadro médio de ativos por mês (média das fotografias do mês). `dia` = "YYYY-MM". */
+  quadroMedioMensal: PontoLinha[]
 }
 
 const ORDEM_SITUACAO: Record<string, number> = {
@@ -131,6 +134,7 @@ export async function getControleQuadro(filtros: FiltrosQuadro): Promise<Control
     desligamentosMes: 0,
     porSituacao: [],
     linhaDoTempo: [],
+    quadroMedioMensal: [],
   }
   if (!dataReferencia) return base
 
@@ -143,7 +147,7 @@ export async function getControleQuadro(filtros: FiltrosQuadro): Promise<Control
       and ($5::text is null or upper(gerente) = upper($5))`
   const args = [GERENTE_REGIONAL_FIXO, dataReferencia, cargosExcluidos, cr, gerente]
 
-  const [total, situacao, deslig, linha] = await Promise.all([
+  const [total, situacao, deslig, linha, mensal] = await Promise.all([
     inhausPool.query(`select count(distinct matricula)::int q from vw_sra_geral ${cond}`, args),
     inhausPool.query(
       `select situacao, count(distinct matricula)::int q from vw_sra_geral ${cond} group by situacao`,
@@ -162,26 +166,35 @@ export async function getControleQuadro(filtros: FiltrosQuadro): Promise<Control
          and to_char(dt_demissao,'YYYY-MM') = $5`,
       [GERENTE_REGIONAL_FIXO, cargosExcluidos, cr, gerente, mesReferencia],
     ),
-    // Linha do tempo: quadro ativo por dia (admitidos até cada data).
+    // Linha do tempo: quadro ativo em cada DATA DE REFERÊNCIA (fotografia real).
+    // Só aparecem os dias em que houve fotografia do quadro — dias sem coleta
+    // não são inventados. Lista de parâmetros própria ($1..$5).
     inhausPool.query(
-      `with roster as (
-         select matricula, min(dt_admissao) adm
-         from vw_sra_geral ${cond} and dt_admissao is not null
-         group by matricula
-       ),
-       dias as (
-         select generate_series(
-           case when $6::text is null then ($2::date - interval '89 day')
-                else ($6 || '-01')::date end,
-           case when $6::text is null then $2::date
-                else least(($6 || '-01')::date + interval '1 month' - interval '1 day', $2::date) end,
-           interval '1 day'
-         )::date d
+      `select to_char(data_referencia,'YYYY-MM-DD') dia, count(distinct matricula)::int q
+       from vw_sra_geral
+       where upper(gerente_regional)=upper($1)
+         and descricao_funcao <> ALL($2::text[])
+         and ($3::text is null or cr = $3)
+         and ($4::text is null or upper(gerente) = upper($4))
+         and ($5::text is null or to_char(data_referencia,'YYYY-MM') = $5)
+       group by data_referencia order by data_referencia`,
+      [GERENTE_REGIONAL_FIXO, cargosExcluidos, cr, gerente, mes],
+    ),
+    // Quadro MÉDIO de ativos por mês: média das fotografias (dias) de cada mês.
+    inhausPool.query(
+      `with diario as (
+         select data_referencia, count(distinct matricula)::numeric q
+         from vw_sra_geral
+         where upper(gerente_regional)=upper($1)
+           and descricao_funcao <> ALL($2::text[])
+           and ($3::text is null or cr = $3)
+           and ($4::text is null or upper(gerente) = upper($4))
+           and ($5::text is null or to_char(data_referencia,'YYYY-MM') = $5)
+         group by data_referencia
        )
-       select to_char(d.d,'YYYY-MM-DD') dia, count(r.matricula)::int q
-       from dias d left join roster r on r.adm <= d.d
-       group by d.d order by d.d`,
-      [...args, mesReferencia],
+       select to_char(data_referencia,'YYYY-MM') dia, round(avg(q))::int q
+       from diario group by to_char(data_referencia,'YYYY-MM') order by 1`,
+      [GERENTE_REGIONAL_FIXO, cargosExcluidos, cr, gerente, mes],
     ),
   ])
 
@@ -193,5 +206,6 @@ export async function getControleQuadro(filtros: FiltrosQuadro): Promise<Control
       .map((r) => ({ rotulo: (r.situacao as string) ?? "—", total: paraNumero(r.q) }))
       .sort((a, b) => (ORDEM_SITUACAO[a.rotulo] ?? 99) - (ORDEM_SITUACAO[b.rotulo] ?? 99)),
     linhaDoTempo: linha.rows.map((r) => ({ dia: r.dia as string, total: paraNumero(r.q) })),
+    quadroMedioMensal: mensal.rows.map((r) => ({ dia: r.dia as string, total: paraNumero(r.q) })),
   }
 }

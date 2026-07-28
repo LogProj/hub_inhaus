@@ -47,7 +47,7 @@ export function FiltrosQuadro({ opcoes, atual }: Props) {
   }))
 
   return (
-    <div className="glass reveal rounded-3xl p-5">
+    <div className="glass reveal relative z-30 rounded-3xl p-5">
       <div className="mb-4 flex items-center gap-2 text-sm font-medium text-navy">
         <SlidersHorizontal className="h-4 w-4 text-teal" />
         Filtros

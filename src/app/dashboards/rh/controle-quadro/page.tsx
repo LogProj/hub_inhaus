@@ -105,8 +105,14 @@ export default async function ControleQuadroPage({
             </p>
             <ul className="list-disc space-y-1 pl-5">
               <li>
-                <b>Linha do tempo:</b> para cada dia, mostra quantas pessoas do quadro já
-                haviam sido <b>admitidas até aquela data</b>.
+                <b>Quadro ativo por dia:</b> mostra o total de pessoas ativas em cada{" "}
+                <b>data de referência</b> (as fotografias do quadro). Dias sem fotografia não
+                aparecem.
+              </li>
+              <li>
+                <b>Quadro médio por mês:</b> a <b>média</b> das fotografias de cada mês. Ex.:
+                se num mês houve fotografias de 1.824 e 1.829, a média é (1.824 + 1.829) ÷ 2 =
+                <b> 1.827</b>.
               </li>
               <li>
                 <b>Desligamentos no mês:</b> pessoas com <b>data de desligamento</b> dentro do
@@ -218,7 +224,7 @@ export default async function ControleQuadroPage({
             )}
           </section>
 
-          {/* Linha do tempo */}
+          {/* Linha do tempo — por data de referência */}
           <section className="glass reveal rounded-3xl p-6">
             <div className="mb-1 flex items-center gap-2">
               <LineChart className="h-4 w-4 text-teal" />
@@ -227,12 +233,35 @@ export default async function ControleQuadroPage({
               </h2>
             </div>
             <p className="mb-4 text-xs text-muted-foreground">
-              Pessoas do quadro já admitidas até cada data.
+              Total de pessoas ativas em cada data de referência (fotografia do quadro).
             </p>
             {dados.linhaDoTempo.length ? (
-              <LinhaQuadro dados={dados.linhaDoTempo} />
+              <LinhaQuadro dados={dados.linhaDoTempo} gradId="grad-dia" />
             ) : (
-              <p className="text-sm text-muted-foreground">Sem dados no período.</p>
+              <p className="text-sm text-muted-foreground">Sem fotografias no período.</p>
+            )}
+          </section>
+
+          {/* Quadro médio por mês */}
+          <section className="glass reveal rounded-3xl p-6">
+            <div className="mb-1 flex items-center gap-2">
+              <LineChart className="h-4 w-4 text-teal" />
+              <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">
+                Quadro médio de ativos por mês
+              </h2>
+            </div>
+            <p className="mb-4 text-xs text-muted-foreground">
+              Média das fotografias do quadro em cada mês.
+            </p>
+            {dados.quadroMedioMensal.length ? (
+              <LinhaQuadro
+                dados={dados.quadroMedioMensal}
+                formato="mes"
+                sufixoTooltip="em média"
+                gradId="grad-mes"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem fotografias no período.</p>
             )}
           </section>
         </>
