@@ -6,34 +6,45 @@ import { ChevronDown, Check, Search, SlidersHorizontal } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { tituloNome } from "@/lib/nomes"
+import { Combobox, type ComboOption } from "@/components/ui/Combobox"
 import type { OpcoesQuadro } from "@/lib/quadro"
+
+type Atual = {
+  gerente: string | null
+  cr: string | null
+  mes: string | null
+  cargosExcluidos: string[]
+}
 
 type Props = {
   opcoes: OpcoesQuadro
-  atual: {
-    gerenteRegional: string
-    cr: string | null
-    mes: string | null
-    cargosExcluidos: string[]
-  }
+  atual: Atual
 }
-
-const CLASSE_SELECT =
-  "h-10 w-full rounded-xl border border-input bg-white/80 px-3 pr-9 text-sm text-foreground outline-none transition-colors focus:border-teal/50 focus:ring-2 focus:ring-teal/20"
 
 export function FiltrosQuadro({ opcoes, atual }: Props) {
   const router = useRouter()
   const pathname = usePathname()
 
-  const navegar = (over: Partial<Props["atual"]>) => {
+  const navegar = (over: Partial<Atual>) => {
     const f = { ...atual, ...over }
     const params = new URLSearchParams()
-    params.set("gr", f.gerenteRegional)
+    if (f.gerente) params.set("ger", f.gerente)
     if (f.cr) params.set("cr", f.cr)
     if (f.mes) params.set("mes", f.mes)
     for (const c of f.cargosExcluidos) params.append("excluir", c)
-    router.push(`${pathname}?${params.toString()}`)
+    const qs = params.toString()
+    router.push(qs ? `${pathname}?${qs}` : pathname)
   }
+
+  const opcoesGerente: ComboOption[] = opcoes.gerentes.map((g) => ({
+    value: g,
+    label: tituloNome(g),
+  }))
+  const opcoesCr: ComboOption[] = opcoes.crs.map((c) => ({ value: c, label: c }))
+  const opcoesMes: ComboOption[] = opcoes.meses.map((m) => ({
+    value: m.valor,
+    label: m.rotulo,
+  }))
 
   return (
     <div className="glass reveal rounded-3xl p-5">
@@ -42,67 +53,48 @@ export function FiltrosQuadro({ opcoes, atual }: Props) {
         Filtros
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
-            Gerente regional
-          </span>
-          <div className="relative">
-            <select
-              value={atual.gerenteRegional}
-              onChange={(e) => navegar({ gerenteRegional: e.target.value, cr: null, cargosExcluidos: [] })}
-              className={CLASSE_SELECT}
-            >
-              {opcoes.gerentes.map((g) => (
-                <option key={g} value={g}>
-                  {tituloNome(g)}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          </div>
-        </label>
+        <div>
+          <span className="mb-1.5 block text-xs font-medium text-muted-foreground">Gerente</span>
+          <Combobox
+            ariaLabel="Filtrar por gerente"
+            value={atual.gerente}
+            onChange={(v) => navegar({ gerente: v })}
+            options={opcoesGerente}
+            allowClear
+            clearLabel="Todos os gerentes"
+            placeholder="Todos os gerentes"
+          />
+        </div>
 
-        <label className="block">
+        <div>
           <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
             Centro de resultado
           </span>
-          <div className="relative">
-            <select
-              value={atual.cr ?? ""}
-              onChange={(e) => navegar({ cr: e.target.value || null })}
-              className={CLASSE_SELECT}
-            >
-              <option value="">Todos os CRs</option>
-              {opcoes.crs.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          </div>
-        </label>
+          <Combobox
+            ariaLabel="Filtrar por centro de resultado"
+            value={atual.cr}
+            onChange={(v) => navegar({ cr: v })}
+            options={opcoesCr}
+            allowClear
+            clearLabel="Todos os CRs"
+            placeholder="Todos os CRs"
+          />
+        </div>
 
-        <label className="block">
+        <div>
           <span className="mb-1.5 block text-xs font-medium text-muted-foreground">Mês</span>
-          <div className="relative">
-            <select
-              value={atual.mes ?? ""}
-              onChange={(e) => navegar({ mes: e.target.value || null })}
-              className={CLASSE_SELECT}
-            >
-              <option value="">Mais recente</option>
-              {opcoes.meses.map((m) => (
-                <option key={m.valor} value={m.valor}>
-                  {m.rotulo}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          </div>
-        </label>
+          <Combobox
+            ariaLabel="Filtrar por mês"
+            value={atual.mes}
+            onChange={(v) => navegar({ mes: v })}
+            options={opcoesMes}
+            allowClear
+            clearLabel="Mais recente"
+            placeholder="Mais recente"
+          />
+        </div>
 
-        <div className="block">
+        <div>
           <span className="mb-1.5 block text-xs font-medium text-muted-foreground">Cargos</span>
           <SeletorCargos
             cargos={opcoes.cargos}
@@ -130,7 +122,6 @@ function SeletorCargos({
   const [pend, setPend] = useState<Set<string>>(new Set(excluidos))
   const ref = useRef<HTMLDivElement>(null)
 
-  // Sincroniza quando os filtros mudam por fora (navegação).
   useEffect(() => setPend(new Set(excluidos)), [excluidos])
 
   useEffect(() => {
@@ -152,14 +143,13 @@ function SeletorCargos({
 
   const incluidos = cargos.length - pend.size
 
-  const alternar = (c: string) => {
+  const alternar = (c: string) =>
     setPend((s) => {
       const n = new Set(s)
       if (n.has(c)) n.delete(c)
       else n.add(c)
       return n
     })
-  }
 
   const aplicar = () => {
     onAplicar(Array.from(pend))
@@ -172,18 +162,17 @@ function SeletorCargos({
         type="button"
         onClick={() => setAberto((v) => !v)}
         aria-expanded={aberto}
+        aria-haspopup="listbox"
         className="flex h-10 w-full items-center justify-between rounded-xl border border-input bg-white/80 px-3 text-sm text-foreground outline-none transition-colors hover:border-teal/40 focus:border-teal/50 focus:ring-2 focus:ring-teal/20"
       >
         <span className="truncate">
-          {pend.size === 0
-            ? "Todos os cargos"
-            : `${incluidos} de ${cargos.length} cargos`}
+          {pend.size === 0 ? "Todos os cargos" : `${incluidos} de ${cargos.length} cargos`}
         </span>
         <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
       </button>
 
       {aberto && (
-        <div className="absolute left-0 top-11 z-40 w-[min(92vw,22rem)] rounded-2xl border border-navy/10 bg-white p-3 shadow-soft">
+        <div className="absolute left-0 top-11 z-40 w-[min(92vw,22rem)] rounded-2xl border border-navy/10 bg-white p-2 shadow-soft">
           <div className="relative mb-2">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -195,7 +184,7 @@ function SeletorCargos({
             />
           </div>
 
-          <div className="mb-2 flex items-center justify-between text-xs">
+          <div className="mb-1 flex items-center justify-between px-1 text-xs">
             <button
               type="button"
               onClick={() => setPend(new Set())}
@@ -240,7 +229,7 @@ function SeletorCargos({
             )}
           </ul>
 
-          <div className="mt-3 flex justify-end">
+          <div className="mt-2 flex justify-end">
             <button
               type="button"
               onClick={aplicar}

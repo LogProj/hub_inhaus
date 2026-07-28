@@ -1,14 +1,15 @@
 import type { Metadata } from "next"
-import { Users, UserCheck, Plane, HeartPulse } from "lucide-react"
+import { Users, UserCheck, Plane, HeartPulse, UserMinus, LineChart } from "lucide-react"
 
 import { TiltCard } from "@/components/TiltCard"
 import { tituloNome } from "@/lib/nomes"
 import { InfoIndicador } from "@/components/dashboard/InfoIndicador"
 import { FiltrosQuadro } from "@/components/dashboard/FiltrosQuadro"
+import { LinhaQuadro } from "@/components/dashboard/LinhaQuadro"
 import {
   getControleQuadro,
   getOpcoesQuadro,
-  GERENTE_REGIONAL_PADRAO,
+  GERENTE_REGIONAL_FIXO,
   type ControleQuadro,
   type OpcoesQuadro,
 } from "@/lib/quadro"
@@ -18,7 +19,6 @@ export const metadata: Metadata = { title: "Controle de Quadro" }
 // Lê o quadro a cada acesso (sem prerender no build).
 export const dynamic = "force-dynamic"
 
-/** Formata "2026-07-28" como "28/07/2026" sem sofrer com fuso horário. */
 function dataBR(iso: string | null): string {
   if (!iso) return "—"
   const [y, m, d] = iso.slice(0, 10).split("-")
@@ -60,7 +60,7 @@ export default async function ControleQuadroPage({
 }: {
   searchParams: SearchParams
 }) {
-  const gerenteRegional = texto(searchParams.gr) ?? GERENTE_REGIONAL_PADRAO
+  const gerente = texto(searchParams.ger)
   const cr = texto(searchParams.cr)
   const mes = texto(searchParams.mes)
   const cargosExcluidos = lista(searchParams.excluir)
@@ -69,8 +69,8 @@ export default async function ControleQuadroPage({
   let opcoes: OpcoesQuadro | null = null
   try {
     ;[dados, opcoes] = await Promise.all([
-      getControleQuadro({ gerenteRegional, cr, mes, cargosExcluidos }),
-      getOpcoesQuadro(gerenteRegional, mes),
+      getControleQuadro({ gerente, cr, mes, cargosExcluidos }),
+      getOpcoesQuadro(mes),
     ])
   } catch {
     dados = null
@@ -79,13 +79,7 @@ export default async function ControleQuadroPage({
 
   const nf = (n: number) => n.toLocaleString("pt-BR")
   const cargosIncluidos = opcoes ? opcoes.cargos.length - cargosExcluidos.length : 0
-
-  // O banco guarda o nome do gerente em CAIXA ALTA. Casamos sem diferenciar
-  // maiúsculas para o <select> exibir a opção certa, e mostramos com nome bonito.
-  const gerenteEfetivo =
-    opcoes?.gerentes.find((g) => g.toUpperCase() === gerenteRegional.toUpperCase()) ??
-    gerenteRegional
-  const gerenteExibicao = tituloNome(gerenteEfetivo)
+  const gerenteFiltro = gerente ? tituloNome(gerente) : null
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -101,25 +95,28 @@ export default async function ControleQuadroPage({
           </h1>
           <InfoIndicador titulo="Controle de Quadro">
             <p>
-              <b>O que mostra:</b> quantas pessoas fazem parte da equipe, de acordo com os
-              filtros escolhidos (gerente regional, centro de resultado, mês e cargos).
+              <b>O que mostra:</b> quantas pessoas fazem parte da equipe do gerente regional{" "}
+              <b>{GERENTE_REGIONAL_FIXO}</b>, de acordo com os filtros (gerente, centro de
+              resultado, mês e cargos).
             </p>
             <p>
-              <b>Como contamos:</b> cada pessoa entra <b>uma única vez</b>, mesmo que atue
-              em mais de um centro de resultado.
+              <b>Como contamos:</b> cada pessoa entra <b>uma única vez</b>, mesmo que atue em
+              mais de um centro de resultado.
             </p>
             <ul className="list-disc space-y-1 pl-5">
               <li>
-                O <b>mês</b> mostra a fotografia mais recente daquele mês
-                {dados?.dataReferencia ? ` (atual: ${dataBR(dados.dataReferencia)})` : ""}.
+                <b>Linha do tempo:</b> para cada dia, mostra quantas pessoas do quadro já
+                haviam sido <b>admitidas até aquela data</b>.
               </li>
               <li>
-                Você pode <b>desmarcar cargos</b> para tirá-los da conta — só entram no
-                total os cargos que ficarem marcados.
+                <b>Desligamentos no mês:</b> pessoas com <b>data de desligamento</b> dentro do
+                mês, contadas uma única vez.
               </li>
               <li>
-                <b>Todas as situações contam:</b> em atividade, de férias e afastados
-                continuam no quadro.
+                Você pode <b>desmarcar cargos</b> para tirá-los da conta.
+              </li>
+              <li>
+                <b>Todas as situações contam:</b> em atividade, de férias e afastados.
               </li>
             </ul>
             <p>
@@ -130,16 +127,14 @@ export default async function ControleQuadroPage({
         </div>
         <p className="mt-2 text-muted-foreground">
           Gerente regional{" "}
-          <b className="font-semibold text-foreground">{gerenteExibicao}</b>
+          <b className="font-semibold text-foreground">{GERENTE_REGIONAL_FIXO}</b>
+          {gerenteFiltro ? <> · gerente {gerenteFiltro}</> : null}
           {dados?.dataReferencia ? <> · fotografia de {dataBR(dados.dataReferencia)}</> : null}
         </p>
       </section>
 
       {opcoes && (
-        <FiltrosQuadro
-          opcoes={opcoes}
-          atual={{ gerenteRegional: gerenteEfetivo, cr, mes, cargosExcluidos }}
-        />
+        <FiltrosQuadro opcoes={opcoes} atual={{ gerente, cr, mes, cargosExcluidos }} />
       )}
 
       {!dados ? (
@@ -149,28 +144,49 @@ export default async function ControleQuadroPage({
           </p>
         </div>
       ) : (
-        <section className="grid gap-5 lg:grid-cols-[1.1fr_2fr]">
-          <TiltCard max={4}>
-            <div className="glass reveal relative h-full overflow-hidden rounded-3xl p-7">
+        <>
+          {/* Total + desligamentos */}
+          <section className="grid gap-5 lg:grid-cols-2">
+            <TiltCard max={4}>
+              <div className="glass reveal relative h-full overflow-hidden rounded-3xl p-7">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-tint text-teal">
+                  <Users className="h-5 w-5" />
+                </span>
+                <p className="mt-5 text-sm font-medium text-muted-foreground">
+                  Total de colaboradores
+                </p>
+                <p className="mt-1 font-display text-5xl font-semibold tracking-tight text-foreground">
+                  {nf(dados.totalQuadro)}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {cr ? "no CR selecionado" : "em todos os centros de resultado"}
+                  {opcoes && cargosExcluidos.length > 0
+                    ? ` · ${cargosIncluidos} de ${opcoes.cargos.length} cargos`
+                    : null}
+                </p>
+              </div>
+            </TiltCard>
+
+            <div className="glass reveal relative overflow-hidden rounded-3xl p-7">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-tint text-teal">
-                <Users className="h-5 w-5" />
+                <UserMinus className="h-5 w-5" />
               </span>
               <p className="mt-5 text-sm font-medium text-muted-foreground">
-                Total de colaboradores
+                Desligamentos no mês
               </p>
               <p className="mt-1 font-display text-5xl font-semibold tracking-tight text-foreground">
-                {nf(dados.totalQuadro)}
+                {nf(dados.desligamentosMes)}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                {cr ? <>no CR selecionado</> : <>em todos os centros de resultado</>}
-                {opcoes && cargosExcluidos.length > 0 ? (
-                  <> · {cargosIncluidos} de {opcoes.cargos.length} cargos</>
-                ) : null}
+                {dados.desligamentosMes === 0
+                  ? "Nenhum desligamento registrado no período."
+                  : "pessoas com desligamento no mês"}
               </p>
             </div>
-          </TiltCard>
+          </section>
 
-          <div className="grid gap-5 sm:grid-cols-3">
+          {/* Situação */}
+          <section className="grid gap-5 sm:grid-cols-3">
             {dados.porSituacao.map((s, i) => {
               const rotulo = LABEL_SITUACAO[s.rotulo] ?? s.rotulo
               const Icone = ICONE_SITUACAO[rotulo] ?? UserCheck
@@ -200,8 +216,26 @@ export default async function ControleQuadroPage({
                 Nenhuma pessoa no quadro com os filtros atuais.
               </p>
             )}
-          </div>
-        </section>
+          </section>
+
+          {/* Linha do tempo */}
+          <section className="glass reveal rounded-3xl p-6">
+            <div className="mb-1 flex items-center gap-2">
+              <LineChart className="h-4 w-4 text-teal" />
+              <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">
+                Quadro ativo por dia
+              </h2>
+            </div>
+            <p className="mb-4 text-xs text-muted-foreground">
+              Pessoas do quadro já admitidas até cada data.
+            </p>
+            {dados.linhaDoTempo.length ? (
+              <LinhaQuadro dados={dados.linhaDoTempo} />
+            ) : (
+              <p className="text-sm text-muted-foreground">Sem dados no período.</p>
+            )}
+          </section>
+        </>
       )}
     </div>
   )

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, UserCog, LogOut, UserRound, Circle, type LucideIcon } from "lucide-react"
+import { LayoutDashboard, UserCog, LogOut, UserRound, type LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { InhausLogo } from "@/components/brand/InhausLogo"
@@ -23,15 +23,20 @@ type NavGroup = {
 // Grupo "Geral" fixo no topo, com a Home fora de qualquer domínio.
 const GRUPO_GERAL: NavGroup = {
   title: "Geral",
-  items: [{ href: TELA_HOME.href, label: TELA_HOME.label, icon: LayoutDashboard }],
+  items: [{ href: TELA_HOME.href, label: TELA_HOME.label, icon: TELA_HOME.icone ?? LayoutDashboard }],
 }
 
 // Um grupo por domínio — a FONTE DE VERDADE é src/lib/domains.ts. O título do
-// grupo e o ícone vêm do domínio; as telas dentro dele usam um ícone genérico.
+// grupo e o ícone vêm do domínio; cada tela usa o ícone próprio (tela.icone),
+// com fallback para LayoutDashboard caso alguma fique sem ícone definido.
 const GRUPOS_DOMINIO: NavGroup[] = DOMINIOS.map((dominio) => ({
   title: dominio.label,
   icon: dominio.icone,
-  items: dominio.telas.map((tela) => ({ href: tela.href, label: tela.label })),
+  items: dominio.telas.map((tela) => ({
+    href: tela.href,
+    label: tela.label,
+    icon: tela.icone ?? LayoutDashboard,
+  })),
 }))
 
 const GRUPO_ADMIN: NavGroup = {
@@ -96,21 +101,17 @@ export function DashboardSidebar({
                           : "text-foreground/75 hover:bg-teal-tint hover:text-teal",
                       )}
                     >
-                      {item.icon ? (
-                        <item.icon
-                          className={cn(
-                            "h-[18px] w-[18px] shrink-0 transition-transform",
-                            !active && "group-hover:scale-110",
-                          )}
-                        />
-                      ) : (
-                        <Circle
-                          className={cn(
-                            "h-2 w-2 shrink-0 fill-current transition-opacity",
-                            active ? "opacity-100" : "opacity-40 group-hover:opacity-100",
-                          )}
-                        />
-                      )}
+                      {(() => {
+                        const ItemIcon = item.icon ?? LayoutDashboard
+                        return (
+                          <ItemIcon
+                            className={cn(
+                              "h-[18px] w-[18px] shrink-0 transition-transform",
+                              !active && "group-hover:scale-110",
+                            )}
+                          />
+                        )
+                      })()}
                       <span className="flex-1">{item.label}</span>
                     </Link>
                   </li>

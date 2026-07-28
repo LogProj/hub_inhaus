@@ -1,8 +1,18 @@
 import {
+  Activity,
+  AlertTriangle,
   BadgeCheck,
+  CalendarX,
+  ClipboardCheck,
+  Clock,
+  FileWarning,
   GraduationCap,
+  Grid3x3,
+  LayoutDashboard,
+  Repeat,
   ShieldCheck,
   Users,
+  UsersRound,
   Wallet,
   type LucideIcon,
 } from "lucide-react"
@@ -24,6 +34,8 @@ export type Tela = {
   palavrasChave?: string[]
   /** Tela ainda não construída: aparece desabilitada na sidebar. */
   emBreve?: boolean
+  /** Ícone exibido na sidebar antes do nome da tela. */
+  icone?: LucideIcon
 }
 
 export type Dominio = {
@@ -43,18 +55,21 @@ export const DOMINIOS: Dominio[] = [
         key: "seguranca-visao-geral",
         label: "Visão geral",
         href: "/dashboards/seguranca",
+        icone: LayoutDashboard,
       },
       {
         key: "taxa-frequencia",
         label: "Taxa de frequência",
         href: "/dashboards/seguranca/taxa-frequencia",
         palavrasChave: ["acidente", "trir", "tf", "afastamento", "sst"],
+        icone: Activity,
       },
       {
         key: "quase-acidentes",
         label: "Quase acidentes",
         href: "/dashboards/seguranca/quase-acidentes",
         palavrasChave: ["incidente", "relato", "condicao insegura"],
+        icone: AlertTriangle,
       },
     ],
   },
@@ -63,30 +78,34 @@ export const DOMINIOS: Dominio[] = [
     label: "RH",
     icone: Users,
     telas: [
-      { key: "rh-visao-geral", label: "Visão geral", href: "/dashboards/rh" },
+      { key: "rh-visao-geral", label: "Visão geral", href: "/dashboards/rh", icone: LayoutDashboard },
       {
         key: "controle-quadro",
         label: "Controle de Quadro",
         href: "/dashboards/rh/controle-quadro",
         palavrasChave: ["quadro", "colaboradores", "efetivo", "gerente regional", "headcount"],
+        icone: UsersRound,
       },
       {
         key: "absenteismo",
         label: "Absenteísmo",
         href: "/dashboards/rh/absenteismo",
         palavrasChave: ["falta", "presenca", "ponto", "atestado"],
+        icone: CalendarX,
       },
       {
         key: "turnover",
         label: "Turnover",
         href: "/dashboards/rh/turnover",
         palavrasChave: ["desligamento", "rotatividade", "admissao"],
+        icone: Repeat,
       },
       {
         key: "headcount",
         label: "Headcount",
         href: "/dashboards/rh/headcount",
         palavrasChave: ["quadro", "efetivo", "pessoas"],
+        icone: Users,
       },
     ],
   },
@@ -99,18 +118,21 @@ export const DOMINIOS: Dominio[] = [
         key: "qualidade-visao-geral",
         label: "Visão geral",
         href: "/dashboards/qualidade",
+        icone: LayoutDashboard,
       },
       {
         key: "nao-conformidades",
         label: "Não conformidades",
         href: "/dashboards/qualidade/nao-conformidades",
         palavrasChave: ["nc", "auditoria", "retrabalho", "refugo"],
+        icone: FileWarning,
       },
       {
         key: "auditorias",
         label: "Auditorias",
         href: "/dashboards/qualidade/auditorias",
         palavrasChave: ["iso", "5s", "checklist"],
+        icone: ClipboardCheck,
       },
     ],
   },
@@ -123,18 +145,21 @@ export const DOMINIOS: Dominio[] = [
         key: "treinamentos-visao-geral",
         label: "Visão geral",
         href: "/dashboards/treinamentos",
+        icone: LayoutDashboard,
       },
       {
         key: "matriz-competencias",
         label: "Matriz de competências",
         href: "/dashboards/treinamentos/matriz",
         palavrasChave: ["vencimento", "validade", "apto", "nr", "certificacao"],
+        icone: Grid3x3,
       },
       {
         key: "horas-treinamento",
         label: "Horas de treinamento",
         href: "/dashboards/treinamentos/horas",
         palavrasChave: ["hht", "carga horaria", "per capita"],
+        icone: Clock,
       },
     ],
   },
@@ -147,12 +172,14 @@ export const DOMINIOS: Dominio[] = [
         key: "financeiro-visao-geral",
         label: "Visão geral",
         href: "/dashboards/financeiro",
+        icone: LayoutDashboard,
       },
       {
         key: "custo-pessoal",
         label: "Custo de pessoal",
         href: "/dashboards/financeiro/custo-pessoal",
         palavrasChave: ["folha", "despesa", "orcamento"],
+        icone: Wallet,
       },
     ],
   },
@@ -168,6 +195,7 @@ export const TELA_HOME: TelaComDominio = {
   palavrasChave: ["inicio", "home", "pulso", "mission control"],
   dominioKey: "geral",
   dominioLabel: "Geral",
+  icone: LayoutDashboard,
 }
 
 export const TODAS_AS_TELAS: TelaComDominio[] = [
