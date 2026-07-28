@@ -1,11 +1,13 @@
 import type { Metadata } from "next"
-import { Users, UserCheck, Plane, HeartPulse, UserMinus, LineChart } from "lucide-react"
+import {
+  Users, UserCheck, Plane, HeartPulse, UserMinus, LineChart, Building2, Briefcase,
+} from "lucide-react"
 
 import { TiltCard } from "@/components/TiltCard"
-import { tituloNome } from "@/lib/nomes"
 import { InfoIndicador } from "@/components/dashboard/InfoIndicador"
 import { FiltrosQuadro } from "@/components/dashboard/FiltrosQuadro"
 import { LinhaQuadro } from "@/components/dashboard/LinhaQuadro"
+import { BarrasQuadro } from "@/components/dashboard/BarrasQuadro"
 import {
   getControleQuadro,
   getOpcoesQuadro,
@@ -16,7 +18,6 @@ import {
 
 export const metadata: Metadata = { title: "Controle de Quadro" }
 
-// Lê o quadro a cada acesso (sem prerender no build).
 export const dynamic = "force-dynamic"
 
 function dataBR(iso: string | null): string {
@@ -43,14 +44,9 @@ function pct(parte: number, total: number): string {
   return `${Math.round((parte / total) * 100)}%`
 }
 
-function texto(v: string | string[] | undefined): string | null {
-  const s = Array.isArray(v) ? v[0] : v
-  return s && s.trim() ? s : null
-}
-
 function lista(v: string | string[] | undefined): string[] {
   if (!v) return []
-  return Array.isArray(v) ? v : [v]
+  return (Array.isArray(v) ? v : [v]).filter((s) => s.trim())
 }
 
 type SearchParams = { [k: string]: string | string[] | undefined }
@@ -60,17 +56,17 @@ export default async function ControleQuadroPage({
 }: {
   searchParams: SearchParams
 }) {
-  const gerente = texto(searchParams.ger)
-  const cr = texto(searchParams.cr)
-  const mes = texto(searchParams.mes)
+  const gerentes = lista(searchParams.ger)
+  const crs = lista(searchParams.cr)
+  const meses = lista(searchParams.mes)
   const cargosExcluidos = lista(searchParams.excluir)
 
   let dados: ControleQuadro | null = null
   let opcoes: OpcoesQuadro | null = null
   try {
     ;[dados, opcoes] = await Promise.all([
-      getControleQuadro({ gerente, cr, mes, cargosExcluidos }),
-      getOpcoesQuadro(mes),
+      getControleQuadro({ gerentes, crs, meses, cargosExcluidos }),
+      getOpcoesQuadro(meses),
     ])
   } catch {
     dados = null
@@ -79,7 +75,6 @@ export default async function ControleQuadroPage({
 
   const nf = (n: number) => n.toLocaleString("pt-BR")
   const cargosIncluidos = opcoes ? opcoes.cargos.length - cargosExcluidos.length : 0
-  const gerenteFiltro = gerente ? tituloNome(gerente) : null
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -96,8 +91,8 @@ export default async function ControleQuadroPage({
           <InfoIndicador titulo="Controle de Quadro">
             <p>
               <b>O que mostra:</b> quantas pessoas fazem parte da equipe do gerente regional{" "}
-              <b>{GERENTE_REGIONAL_FIXO}</b>, de acordo com os filtros (gerente, centro de
-              resultado, mês e cargos).
+              <b>{GERENTE_REGIONAL_FIXO}</b>, de acordo com os filtros. Você pode escolher{" "}
+              <b>mais de um</b> gerente, CR ou mês ao mesmo tempo.
             </p>
             <p>
               <b>Como contamos:</b> cada pessoa entra <b>uma única vez</b>, mesmo que atue em
@@ -105,24 +100,24 @@ export default async function ControleQuadroPage({
             </p>
             <ul className="list-disc space-y-1 pl-5">
               <li>
-                <b>Quadro ativo por dia:</b> mostra o total de pessoas ativas em cada{" "}
-                <b>data de referência</b> (as fotografias do quadro). Dias sem fotografia não
-                aparecem.
+                <b>Total por CR e por cargo:</b> total de pessoas em cada centro de resultado
+                e em cada cargo, <b>no último dia disponível</b>. Mostra as maiores
+                concentrações (role para ver mais).
               </li>
               <li>
-                <b>Quadro médio por mês:</b> a <b>média</b> das fotografias de cada mês. Ex.:
-                se num mês houve fotografias de 1.824 e 1.829, a média é (1.824 + 1.829) ÷ 2 =
-                <b> 1.827</b>.
+                <b>Quadro ativo por dia:</b> total de ativos em cada <b>data de referência</b>
+                {" "}(as fotografias do quadro).
               </li>
               <li>
-                <b>Desligamentos no mês:</b> pessoas com <b>data de desligamento</b> dentro do
-                mês, contadas uma única vez.
+                <b>Quadro médio por mês:</b> a <b>média</b> das fotografias de cada mês.
               </li>
               <li>
-                Você pode <b>desmarcar cargos</b> para tirá-los da conta.
+                <b>Desligamentos no mês:</b> pessoas com <b>data de desligamento</b> no mês,
+                contadas uma única vez.
               </li>
               <li>
-                <b>Todas as situações contam:</b> em atividade, de férias e afastados.
+                Você pode <b>desmarcar cargos</b> para tirá-los da conta. Todas as situações
+                (atividade, férias, afastados) contam no total.
               </li>
             </ul>
             <p>
@@ -134,13 +129,12 @@ export default async function ControleQuadroPage({
         <p className="mt-2 text-muted-foreground">
           Gerente regional{" "}
           <b className="font-semibold text-foreground">{GERENTE_REGIONAL_FIXO}</b>
-          {gerenteFiltro ? <> · gerente {gerenteFiltro}</> : null}
           {dados?.dataReferencia ? <> · fotografia de {dataBR(dados.dataReferencia)}</> : null}
         </p>
       </section>
 
       {opcoes && (
-        <FiltrosQuadro opcoes={opcoes} atual={{ gerente, cr, mes, cargosExcluidos }} />
+        <FiltrosQuadro opcoes={opcoes} atual={{ gerentes, crs, meses, cargosExcluidos }} />
       )}
 
       {!dados ? (
@@ -165,8 +159,8 @@ export default async function ControleQuadroPage({
                   {nf(dados.totalQuadro)}
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {cr ? "no CR selecionado" : "em todos os centros de resultado"}
-                  {opcoes && cargosExcluidos.length > 0
+                  {crs.length ? `${crs.length} CR(s) selecionado(s)` : "todos os centros de resultado"}
+                  {cargosExcluidos.length > 0 && opcoes
                     ? ` · ${cargosIncluidos} de ${opcoes.cargos.length} cargos`
                     : null}
                 </p>
@@ -177,9 +171,7 @@ export default async function ControleQuadroPage({
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-tint text-teal">
                 <UserMinus className="h-5 w-5" />
               </span>
-              <p className="mt-5 text-sm font-medium text-muted-foreground">
-                Desligamentos no mês
-              </p>
+              <p className="mt-5 text-sm font-medium text-muted-foreground">Desligamentos no mês</p>
               <p className="mt-1 font-display text-5xl font-semibold tracking-tight text-foreground">
                 {nf(dados.desligamentosMes)}
               </p>
@@ -263,6 +255,47 @@ export default async function ControleQuadroPage({
             ) : (
               <p className="text-sm text-muted-foreground">Sem fotografias no período.</p>
             )}
+          </section>
+
+          {/* Por CR e por cargo — no último dia disponível */}
+          <section className="grid gap-5 lg:grid-cols-2">
+            <div className="glass reveal rounded-3xl p-6">
+              <div className="mb-1 flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-teal" />
+                <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">
+                  Total por centro de resultado
+                </h2>
+              </div>
+              <p className="mb-4 text-xs text-muted-foreground">
+                Maiores concentrações no último dia disponível · role para ver mais.
+              </p>
+              {dados.porCr.length ? (
+                <div className="max-h-[380px] overflow-y-auto pr-1">
+                  <BarrasQuadro dados={dados.porCr} larguraRotulo={300} maxRotulo={0} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Sem dados no período.</p>
+              )}
+            </div>
+
+            <div className="glass reveal rounded-3xl p-6">
+              <div className="mb-1 flex items-center gap-2">
+                <Briefcase className="h-4 w-4 text-teal" />
+                <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">
+                  Total por cargo
+                </h2>
+              </div>
+              <p className="mb-4 text-xs text-muted-foreground">
+                Maiores concentrações no último dia disponível · role para ver mais.
+              </p>
+              {dados.porCargo.length ? (
+                <div className="max-h-[380px] overflow-y-auto pr-1">
+                  <BarrasQuadro dados={dados.porCargo} larguraRotulo={220} maxRotulo={40} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Sem dados no período.</p>
+              )}
+            </div>
           </section>
         </>
       )}

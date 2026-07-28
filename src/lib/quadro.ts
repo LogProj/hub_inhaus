@@ -5,30 +5,31 @@ import { inhausPool } from "@/lib/db-inhaus"
  *
  * Regra de negócio (mantida em sincronia com o texto do botão "info" da tela):
  *  - Sempre a equipe do gerente regional Lucas Rodrigues da Silva (fixo).
- *  - Mostra quantas pessoas fazem parte do quadro, com filtros de gerente,
- *    centro de resultado (CR), mês e cargo.
- *  - Cada pessoa é contada UMA única vez, mesmo que apareça em mais de um
- *    centro de resultado (por matrícula distinta).
- *  - O mês escolhe a fotografia mais recente daquele mês; sem mês, usa a
- *    fotografia mais recente disponível.
+ *  - Filtros de múltipla escolha: gerente(s), centro(s) de resultado, mês(es) e
+ *    cargos. Filtro vazio = todos.
+ *  - Cada pessoa é contada UMA única vez (por matrícula distinta).
+ *  - "Último dia disponível": a fotografia mais recente dentro do(s) mês(es)
+ *    filtrado(s); sem mês, a fotografia mais recente de todas.
  *  - Cargos podem ser DESMARCADOS para sair da conta.
- *  - Todas as situações entram no total (em atividade, férias, afastados).
- *  - Linha do tempo do quadro ativo por dia: para cada dia, conta quem já havia
- *    sido admitido até aquela data (com base na data de admissão do quadro atual).
- *  - Desligamentos no mês: pessoas com data de demissão dentro do mês (contadas
- *    uma única vez).
+ *  - Todas as situações contam (em atividade, férias, afastados).
+ *  - Total por CR e por cargo: no último dia disponível, top posições.
+ *  - Linha do tempo: quadro ativo em cada data de referência (fotografia real).
+ *  - Quadro médio por mês: média das fotografias do mês.
+ *  - Desligamentos no mês: por data de demissão, cada pessoa uma vez.
  */
 
-/** Gerente regional fixo deste indicador. Nunca vira filtro. */
 export const GERENTE_REGIONAL_FIXO = "Lucas Rodrigues da Silva"
+
+/** Quantas posições trazer nos rankings por CR e por cargo. */
+const TOP_RANKING = 15
 
 export type Fatia = { rotulo: string; total: number }
 export type PontoLinha = { dia: string; total: number }
 
 export type FiltrosQuadro = {
-  gerente: string | null
-  cr: string | null
-  mes: string | null // "YYYY-MM"
+  gerentes: string[]
+  crs: string[]
+  meses: string[] // "YYYY-MM"
   cargosExcluidos: string[]
 }
 
@@ -41,13 +42,12 @@ export type OpcoesQuadro = {
 
 export type ControleQuadro = {
   dataReferencia: string | null
-  mesReferencia: string | null
   totalQuadro: number
   desligamentosMes: number
   porSituacao: Fatia[]
-  /** Quadro ativo em cada data de referência (fotografia real). */
+  porCr: Fatia[]
+  porCargo: Fatia[]
   linhaDoTempo: PontoLinha[]
-  /** Quadro médio de ativos por mês (média das fotografias do mês). `dia` = "YYYY-MM". */
   quadroMedioMensal: PontoLinha[]
 }
 
@@ -73,11 +73,12 @@ function paraNumero(v: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
-async function resolverDataReferencia(mes: string | null): Promise<string | null> {
-  if (mes) {
+/** Fotografia mais recente dentro do(s) mês(es); sem mês, a mais recente de todas. */
+async function resolverDataReferencia(meses: string[]): Promise<string | null> {
+  if (meses.length > 0) {
     const r = await inhausPool.query(
-      "select max(data_referencia)::text d from vw_sra_geral where to_char(data_referencia,'YYYY-MM') = $1",
-      [mes],
+      "select max(data_referencia)::text d from vw_sra_geral where to_char(data_referencia,'YYYY-MM') = any($1::text[])",
+      [meses],
     )
     return r.rows[0]?.d ?? null
   }
@@ -85,12 +86,12 @@ async function resolverDataReferencia(mes: string | null): Promise<string | null
   return r.rows[0]?.d ?? null
 }
 
-/** Opções dos filtros, no escopo do gerente regional fixo + mês selecionado. */
-export async function getOpcoesQuadro(mes: string | null): Promise<OpcoesQuadro> {
-  const dref = await resolverDataReferencia(mes)
+/** Opções dos filtros, no escopo do gerente regional fixo + fotografia atual. */
+export async function getOpcoesQuadro(meses: string[]): Promise<OpcoesQuadro> {
+  const dref = await resolverDataReferencia(meses)
   const escopo = "where upper(gerente_regional)=upper($1) and data_referencia=$2"
 
-  const [meses, gerentes, crs, cargos] = await Promise.all([
+  const [listaMeses, gerentes, crs, cargos] = await Promise.all([
     inhausPool.query(
       "select distinct to_char(data_referencia,'YYYY-MM') m from vw_sra_geral order by m desc",
     ),
@@ -116,85 +117,88 @@ export async function getOpcoesQuadro(mes: string | null): Promise<OpcoesQuadro>
 
   return {
     gerentes: gerentes.rows.map((r) => r.g as string),
-    meses: meses.rows.map((r) => ({ valor: r.m as string, rotulo: rotuloMes(r.m as string) })),
+    meses: listaMeses.rows.map((r) => ({ valor: r.m as string, rotulo: rotuloMes(r.m as string) })),
     crs: crs.rows.map((r) => r.cr as string),
     cargos: cargos.rows.map((r) => r.f as string),
   }
 }
 
 export async function getControleQuadro(filtros: FiltrosQuadro): Promise<ControleQuadro> {
-  const { gerente, cr, mes, cargosExcluidos } = filtros
-  const dataReferencia = await resolverDataReferencia(mes)
-  const mesReferencia = mes ?? (dataReferencia ? dataReferencia.slice(0, 7) : null)
+  const { gerentes, crs, meses, cargosExcluidos } = filtros
+  const dataReferencia = await resolverDataReferencia(meses)
 
   const base: ControleQuadro = {
     dataReferencia,
-    mesReferencia,
     totalQuadro: 0,
     desligamentosMes: 0,
     porSituacao: [],
+    porCr: [],
+    porCargo: [],
     linhaDoTempo: [],
     quadroMedioMensal: [],
   }
   if (!dataReferencia) return base
 
-  // Filtros comuns: $1 gerente regional fixo · $2 data · $3 cargos excluídos ·
-  // $4 cr (ou null) · $5 gerente (ou null).
-  const cond = `where upper(gerente_regional)=upper($1)
+  // Filtros sobre a fotografia (dref): $1 gerente regional · $2 data ·
+  // $3 cargos excluídos · $4 CRs · $5 gerentes.
+  const condFoto = `where upper(gerente_regional)=upper($1)
       and data_referencia=$2
-      and descricao_funcao <> ALL($3::text[])
-      and ($4::text is null or cr = $4)
-      and ($5::text is null or upper(gerente) = upper($5))`
-  const args = [GERENTE_REGIONAL_FIXO, dataReferencia, cargosExcluidos, cr, gerente]
+      and descricao_funcao <> all($3::text[])
+      and (cardinality($4::text[])=0 or cr = any($4::text[]))
+      and (cardinality($5::text[])=0 or gerente = any($5::text[]))`
+  const argsFoto = [GERENTE_REGIONAL_FIXO, dataReferencia, cargosExcluidos, crs, gerentes]
 
-  const [total, situacao, deslig, linha, mensal] = await Promise.all([
-    inhausPool.query(`select count(distinct matricula)::int q from vw_sra_geral ${cond}`, args),
+  // Filtros sobre o histórico (sem fixar data): $1 gerente regional ·
+  // $2 cargos excluídos · $3 CRs · $4 gerentes · $5 meses.
+  const condHist = `where upper(gerente_regional)=upper($1)
+      and descricao_funcao <> all($2::text[])
+      and (cardinality($3::text[])=0 or cr = any($3::text[]))
+      and (cardinality($4::text[])=0 or gerente = any($4::text[]))
+      and (cardinality($5::text[])=0 or to_char(data_referencia,'YYYY-MM') = any($5::text[]))`
+  const argsHist = [GERENTE_REGIONAL_FIXO, cargosExcluidos, crs, gerentes, meses]
+
+  // Desligamentos: mês(es) selecionado(s), ou o mês da fotografia atual.
+  const mesesDeslig = meses.length > 0 ? meses : [dataReferencia.slice(0, 7)]
+
+  const [total, situacao, porCr, porCargo, deslig, linha, mensal] = await Promise.all([
+    inhausPool.query(`select count(distinct matricula)::int q from vw_sra_geral ${condFoto}`, argsFoto),
     inhausPool.query(
-      `select situacao, count(distinct matricula)::int q from vw_sra_geral ${cond} group by situacao`,
-      args,
+      `select situacao, count(distinct matricula)::int q from vw_sra_geral ${condFoto} group by situacao`,
+      argsFoto,
     ),
-    // Desligamentos no mês: por DATA DE DEMISSÃO, contando cada pessoa uma vez.
-    // Lista de parâmetros PRÓPRIA (não usa a data $2), senão o Postgres não
-    // consegue inferir o tipo de um parâmetro que não aparece na query.
+    inhausPool.query(
+      `select cr, count(distinct matricula)::int q from vw_sra_geral ${condFoto}
+       and cr is not null group by cr order by q desc limit ${TOP_RANKING}`,
+      argsFoto,
+    ),
+    inhausPool.query(
+      `select descricao_funcao, count(distinct matricula)::int q from vw_sra_geral ${condFoto}
+       and descricao_funcao is not null group by descricao_funcao order by q desc limit ${TOP_RANKING}`,
+      argsFoto,
+    ),
     inhausPool.query(
       `select count(distinct matricula)::int q from vw_sra_geral
        where upper(gerente_regional)=upper($1)
-         and descricao_funcao <> ALL($2::text[])
-         and ($3::text is null or cr = $3)
-         and ($4::text is null or upper(gerente) = upper($4))
+         and descricao_funcao <> all($2::text[])
+         and (cardinality($3::text[])=0 or cr = any($3::text[]))
+         and (cardinality($4::text[])=0 or gerente = any($4::text[]))
          and dt_demissao is not null
-         and to_char(dt_demissao,'YYYY-MM') = $5`,
-      [GERENTE_REGIONAL_FIXO, cargosExcluidos, cr, gerente, mesReferencia],
+         and to_char(dt_demissao,'YYYY-MM') = any($5::text[])`,
+      [GERENTE_REGIONAL_FIXO, cargosExcluidos, crs, gerentes, mesesDeslig],
     ),
-    // Linha do tempo: quadro ativo em cada DATA DE REFERÊNCIA (fotografia real).
-    // Só aparecem os dias em que houve fotografia do quadro — dias sem coleta
-    // não são inventados. Lista de parâmetros própria ($1..$5).
     inhausPool.query(
       `select to_char(data_referencia,'YYYY-MM-DD') dia, count(distinct matricula)::int q
-       from vw_sra_geral
-       where upper(gerente_regional)=upper($1)
-         and descricao_funcao <> ALL($2::text[])
-         and ($3::text is null or cr = $3)
-         and ($4::text is null or upper(gerente) = upper($4))
-         and ($5::text is null or to_char(data_referencia,'YYYY-MM') = $5)
-       group by data_referencia order by data_referencia`,
-      [GERENTE_REGIONAL_FIXO, cargosExcluidos, cr, gerente, mes],
+       from vw_sra_geral ${condHist} group by data_referencia order by data_referencia`,
+      argsHist,
     ),
-    // Quadro MÉDIO de ativos por mês: média das fotografias (dias) de cada mês.
     inhausPool.query(
       `with diario as (
          select data_referencia, count(distinct matricula)::numeric q
-         from vw_sra_geral
-         where upper(gerente_regional)=upper($1)
-           and descricao_funcao <> ALL($2::text[])
-           and ($3::text is null or cr = $3)
-           and ($4::text is null or upper(gerente) = upper($4))
-           and ($5::text is null or to_char(data_referencia,'YYYY-MM') = $5)
-         group by data_referencia
+         from vw_sra_geral ${condHist} group by data_referencia
        )
        select to_char(data_referencia,'YYYY-MM') dia, round(avg(q))::int q
        from diario group by to_char(data_referencia,'YYYY-MM') order by 1`,
-      [GERENTE_REGIONAL_FIXO, cargosExcluidos, cr, gerente, mes],
+      argsHist,
     ),
   ])
 
@@ -205,6 +209,11 @@ export async function getControleQuadro(filtros: FiltrosQuadro): Promise<Control
     porSituacao: situacao.rows
       .map((r) => ({ rotulo: (r.situacao as string) ?? "—", total: paraNumero(r.q) }))
       .sort((a, b) => (ORDEM_SITUACAO[a.rotulo] ?? 99) - (ORDEM_SITUACAO[b.rotulo] ?? 99)),
+    porCr: porCr.rows.map((r) => ({ rotulo: (r.cr as string) ?? "—", total: paraNumero(r.q) })),
+    porCargo: porCargo.rows.map((r) => ({
+      rotulo: (r.descricao_funcao as string) ?? "—",
+      total: paraNumero(r.q),
+    })),
     linhaDoTempo: linha.rows.map((r) => ({ dia: r.dia as string, total: paraNumero(r.q) })),
     quadroMedioMensal: mensal.rows.map((r) => ({ dia: r.dia as string, total: paraNumero(r.q) })),
   }

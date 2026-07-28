@@ -6,13 +6,14 @@ import { ChevronDown, Check, Search, SlidersHorizontal } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { tituloNome } from "@/lib/nomes"
-import { Combobox, type ComboOption } from "@/components/ui/Combobox"
+import { MultiCombobox } from "@/components/ui/MultiCombobox"
+import { type ComboOption } from "@/components/ui/Combobox"
 import type { OpcoesQuadro } from "@/lib/quadro"
 
 type Atual = {
-  gerente: string | null
-  cr: string | null
-  mes: string | null
+  gerentes: string[]
+  crs: string[]
+  meses: string[]
   cargosExcluidos: string[]
 }
 
@@ -28,9 +29,9 @@ export function FiltrosQuadro({ opcoes, atual }: Props) {
   const navegar = (over: Partial<Atual>) => {
     const f = { ...atual, ...over }
     const params = new URLSearchParams()
-    if (f.gerente) params.set("ger", f.gerente)
-    if (f.cr) params.set("cr", f.cr)
-    if (f.mes) params.set("mes", f.mes)
+    for (const g of f.gerentes) params.append("ger", g)
+    for (const c of f.crs) params.append("cr", c)
+    for (const m of f.meses) params.append("mes", m)
     for (const c of f.cargosExcluidos) params.append("excluir", c)
     const qs = params.toString()
     router.push(qs ? `${pathname}?${qs}` : pathname)
@@ -51,17 +52,18 @@ export function FiltrosQuadro({ opcoes, atual }: Props) {
       <div className="mb-4 flex items-center gap-2 text-sm font-medium text-navy">
         <SlidersHorizontal className="h-4 w-4 text-teal" />
         Filtros
+        <span className="text-xs font-normal text-muted-foreground">
+          · você pode escolher mais de um em cada
+        </span>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <span className="mb-1.5 block text-xs font-medium text-muted-foreground">Gerente</span>
-          <Combobox
+          <MultiCombobox
             ariaLabel="Filtrar por gerente"
-            value={atual.gerente}
-            onChange={(v) => navegar({ gerente: v })}
+            values={atual.gerentes}
+            onChange={(v) => navegar({ gerentes: v })}
             options={opcoesGerente}
-            allowClear
-            clearLabel="Todos os gerentes"
             placeholder="Todos os gerentes"
           />
         </div>
@@ -70,26 +72,22 @@ export function FiltrosQuadro({ opcoes, atual }: Props) {
           <span className="mb-1.5 block text-xs font-medium text-muted-foreground">
             Centro de resultado
           </span>
-          <Combobox
+          <MultiCombobox
             ariaLabel="Filtrar por centro de resultado"
-            value={atual.cr}
-            onChange={(v) => navegar({ cr: v })}
+            values={atual.crs}
+            onChange={(v) => navegar({ crs: v })}
             options={opcoesCr}
-            allowClear
-            clearLabel="Todos os CRs"
             placeholder="Todos os CRs"
           />
         </div>
 
         <div>
           <span className="mb-1.5 block text-xs font-medium text-muted-foreground">Mês</span>
-          <Combobox
+          <MultiCombobox
             ariaLabel="Filtrar por mês"
-            value={atual.mes}
-            onChange={(v) => navegar({ mes: v })}
+            values={atual.meses}
+            onChange={(v) => navegar({ meses: v })}
             options={opcoesMes}
-            allowClear
-            clearLabel="Mais recente"
             placeholder="Mais recente"
           />
         </div>
@@ -172,7 +170,7 @@ function SeletorCargos({
       </button>
 
       {aberto && (
-        <div className="absolute left-0 top-11 z-40 w-[min(92vw,22rem)] rounded-2xl border border-navy/10 bg-white p-2 shadow-soft">
+        <div className="absolute left-0 top-11 z-50 w-[min(92vw,22rem)] rounded-2xl border border-navy/10 bg-white p-2 shadow-soft">
           <div className="relative mb-2">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
