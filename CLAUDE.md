@@ -81,24 +81,29 @@ duplicar a lista em outro lugar.
 
 ---
 
-## Tooltip "info" dos dashboards (OBRIGATÓRIO manter atualizado)
+## Botão "info" dos dashboards — regras de negócio (OBRIGATÓRIO)
 
-Cada dashboard tem, ao lado do título, um campo **info** (ícone/tooltip) que explica ao
-usuário o que aquele painel mostra e como os números são calculados.
+**TODO dashboard tem, ao lado do título, um botão "info"** (componente padrão
+`src/components/dashboard/InfoIndicador.tsx`) que abre um popover explicando ao usuário,
+**em regras de negócio**, o que o painel mostra e **como cada número é calculado**. Não é
+opcional: nenhum indicador entra sem esse botão preenchido.
 
-**Regra:** SEMPRE que houver qualquer alteração em um indicador — nova métrica, mudança
-na lógica de cálculo, fonte de dados, filtros, fórmula, período considerado ou exclusões
-— o texto do **info** daquele dashboard DEVE ser atualizado na mesma tarefa.
+**Regra de manutenção:** SEMPRE que houver qualquer alteração em um indicador — nova
+métrica, mudança na lógica de cálculo, filtros, fórmula, período considerado, exclusões
+ou o filtro padrão — o texto do **info** daquele dashboard DEVE ser atualizado na MESMA
+tarefa. O info nunca pode ficar defasado em relação ao cálculo real.
 
 **Como escrever o info:**
-- Linguagem **clara e simples** — traduzir análise complexa para o dia a dia da operação.
-- **Visual e escaneável**: frases curtas, bullets, destaque do que importa.
-- **Com exemplo numérico** sempre que ajudar.
-- Explicar o recorte em termos de negócio.
-- **Foco 100% no INDICADOR e no NEGÓCIO.** O público é a operação e a gestão, NÃO
-  desenvolvedores — nunca citar tabelas, views, colunas, nomes de campos, SQL, RPA ou
-  banco de dados. Fale de pessoas, treinamentos, ocorrências, metas — não de como o
-  dado é armazenado.
+- **Só regras de negócio.** Explique a lógica de cálculo em termos de operação e gestão:
+  o que entra na conta, o que é contado uma vez, o que é excluído, qual recorte/período.
+- **Bem visual e bem explicado:** frases curtas, bullets, destaque (negrito) no que
+  importa, e **um exemplo numérico** sempre que ajudar a entender a conta.
+- **Zero termo técnico ou referência de backend.** NUNCA citar tabela, view, coluna, nome
+  de campo, SQL, RPA, banco de dados, API ou nome de arquivo. O público é a operação e a
+  gestão. Fale de pessoas, quadro, faltas, treinamentos, ocorrências, metas — não de como
+  o dado é armazenado ou processado.
+- **Mantenha o texto em sincronia com a regra no código** (ex.: o comentário de regra de
+  negócio no topo do módulo de dados do indicador).
 
 ---
 

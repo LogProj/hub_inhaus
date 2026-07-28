@@ -65,6 +65,12 @@ export const DOMINIOS: Dominio[] = [
     telas: [
       { key: "rh-visao-geral", label: "Visão geral", href: "/dashboards/rh" },
       {
+        key: "controle-quadro",
+        label: "Controle de Quadro",
+        href: "/dashboards/rh/controle-quadro",
+        palavrasChave: ["quadro", "colaboradores", "efetivo", "gerente regional", "headcount"],
+      },
+      {
         key: "absenteismo",
         label: "Absenteísmo",
         href: "/dashboards/rh/absenteismo",
