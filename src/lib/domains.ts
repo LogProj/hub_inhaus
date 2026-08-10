@@ -56,6 +56,7 @@ export const DOMINIOS: Dominio[] = [
         label: "Visão geral",
         href: "/dashboards/seguranca",
         icone: LayoutDashboard,
+        emBreve: true,
       },
       {
         key: "taxa-frequencia",
@@ -63,6 +64,7 @@ export const DOMINIOS: Dominio[] = [
         href: "/dashboards/seguranca/taxa-frequencia",
         palavrasChave: ["acidente", "trir", "tf", "afastamento", "sst"],
         icone: Activity,
+        emBreve: true,
       },
       {
         key: "quase-acidentes",
@@ -70,6 +72,7 @@ export const DOMINIOS: Dominio[] = [
         href: "/dashboards/seguranca/quase-acidentes",
         palavrasChave: ["incidente", "relato", "condicao insegura"],
         icone: AlertTriangle,
+        emBreve: true,
       },
     ],
   },
@@ -78,7 +81,13 @@ export const DOMINIOS: Dominio[] = [
     label: "RH",
     icone: Users,
     telas: [
-      { key: "rh-visao-geral", label: "Visão geral", href: "/dashboards/rh", icone: LayoutDashboard },
+      {
+        key: "rh-visao-geral",
+        label: "Visão geral",
+        href: "/dashboards/rh",
+        icone: LayoutDashboard,
+        emBreve: true,
+      },
       {
         key: "controle-quadro",
         label: "Controle de Quadro",
@@ -92,6 +101,7 @@ export const DOMINIOS: Dominio[] = [
         href: "/dashboards/rh/absenteismo",
         palavrasChave: ["falta", "presenca", "ponto", "atestado"],
         icone: CalendarX,
+        emBreve: true,
       },
       {
         key: "turnover",
@@ -99,6 +109,7 @@ export const DOMINIOS: Dominio[] = [
         href: "/dashboards/rh/turnover",
         palavrasChave: ["desligamento", "rotatividade", "admissao"],
         icone: Repeat,
+        emBreve: true,
       },
       {
         key: "headcount",
@@ -106,6 +117,7 @@ export const DOMINIOS: Dominio[] = [
         href: "/dashboards/rh/headcount",
         palavrasChave: ["quadro", "efetivo", "pessoas"],
         icone: Users,
+        emBreve: true,
       },
     ],
   },
@@ -119,6 +131,7 @@ export const DOMINIOS: Dominio[] = [
         label: "Visão geral",
         href: "/dashboards/qualidade",
         icone: LayoutDashboard,
+        emBreve: true,
       },
       {
         key: "nao-conformidades",
@@ -126,6 +139,7 @@ export const DOMINIOS: Dominio[] = [
         href: "/dashboards/qualidade/nao-conformidades",
         palavrasChave: ["nc", "auditoria", "retrabalho", "refugo"],
         icone: FileWarning,
+        emBreve: true,
       },
       {
         key: "auditorias",
@@ -133,6 +147,7 @@ export const DOMINIOS: Dominio[] = [
         href: "/dashboards/qualidade/auditorias",
         palavrasChave: ["iso", "5s", "checklist"],
         icone: ClipboardCheck,
+        emBreve: true,
       },
     ],
   },
@@ -146,6 +161,7 @@ export const DOMINIOS: Dominio[] = [
         label: "Visão geral",
         href: "/dashboards/treinamentos",
         icone: LayoutDashboard,
+        emBreve: true,
       },
       {
         key: "matriz-competencias",
@@ -153,6 +169,7 @@ export const DOMINIOS: Dominio[] = [
         href: "/dashboards/treinamentos/matriz",
         palavrasChave: ["vencimento", "validade", "apto", "nr", "certificacao"],
         icone: Grid3x3,
+        emBreve: true,
       },
       {
         key: "horas-treinamento",
@@ -160,6 +177,7 @@ export const DOMINIOS: Dominio[] = [
         href: "/dashboards/treinamentos/horas",
         palavrasChave: ["hht", "carga horaria", "per capita"],
         icone: Clock,
+        emBreve: true,
       },
     ],
   },
@@ -173,6 +191,7 @@ export const DOMINIOS: Dominio[] = [
         label: "Visão geral",
         href: "/dashboards/financeiro",
         icone: LayoutDashboard,
+        emBreve: true,
       },
       {
         key: "custo-pessoal",
@@ -180,6 +199,7 @@ export const DOMINIOS: Dominio[] = [
         href: "/dashboards/financeiro/custo-pessoal",
         palavrasChave: ["folha", "despesa", "orcamento"],
         icone: Wallet,
+        emBreve: true,
       },
     ],
   },

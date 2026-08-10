@@ -1,16 +1,39 @@
 import type { Metadata } from "next"
-import { EmConstrucao } from "@/components/dashboard/EmConstrucao"
+import { redirect } from "next/navigation"
+
+import { getSessionReadOnly } from "@/lib/auth-session"
+import { acessoLivreLiberado } from "@/lib/dev-auth"
+import { TODAS_AS_TELAS } from "@/lib/domains"
+import { UsuariosAdmin } from "@/components/admin/UsuariosAdmin"
 
 export const metadata: Metadata = { title: "Usuários" }
+export const dynamic = "force-dynamic"
 
-export default function UsuariosPage() {
+export default async function UsuariosPage() {
+  // Gating admin — honra o acesso livre de dev (Visitante é admin).
+  const dev = acessoLivreLiberado()
+  let isAdmin = dev
+  let meuEmail: string | null = null
+
+  if (!dev) {
+    const r = await getSessionReadOnly()
+    if (r.status !== "ok") redirect("/login")
+    isAdmin = r.sessao.authorization.isAdmin
+    meuEmail = r.sessao.user.email
+  }
+  if (!isAdmin) redirect("/dashboards")
+
+  // Telas do hub para o seletor "quais painéis o usuário pode ver" (autorização local).
+  const telaOptions = TODAS_AS_TELAS.map((t) => ({
+    value: t.key,
+    label: `${t.dominioLabel} · ${t.label}`,
+  }))
+
   return (
-    <div className="mx-auto max-w-6xl">
-      <EmConstrucao
-        dominioLabel="Administração"
-        titulo="Usuários"
-        descricao="Vai permitir conceder e revogar acesso ao hub, definir quem é administrador e escolher, por pessoa, quais painéis cada usuário pode ver. É aqui que a gestão controla quem enxerga cada indicador."
-      />
-    </div>
+    <UsuariosAdmin
+      telaOptions={telaOptions}
+      meuEmail={meuEmail}
+      globalConfigurado={Boolean(process.env.AUTH_BASE_URL)}
+    />
   )
 }

@@ -64,6 +64,20 @@
   .eyebrow {
     @apply inline-flex items-center gap-2 rounded-full border border-teal/15 bg-teal-tint px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-teal;
   }
+
+  /* Etiqueta de seção sobre fundo escuro (login high-tech). */
+  .eyebrow-dark {
+    @apply inline-flex items-center gap-2 rounded-full border border-teal/25 bg-teal/10 px-3 py-1 text-[0.7rem] font-medium uppercase tracking-[0.22em] text-teal-soft;
+  }
+
+  /* Vidro escuro imersivo — card/painel sobre fundos navy animados. */
+  .glass-dark {
+    @apply border border-white/10 backdrop-blur-xl;
+    background: rgba(0, 18, 31, 0.55);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 30px 80px -30px rgba(0, 0, 0, 0.7);
+  }
 }
 
 @layer utilities {
@@ -101,6 +115,7 @@
     background-image: radial-gradient(rgba(0, 36, 67, 0.08) 1px, transparent 1px);
     background-size: 22px 22px;
   }
+
 
   @keyframes fade-up {
     from {

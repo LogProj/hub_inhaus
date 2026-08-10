@@ -7,28 +7,6 @@ Spec de design aprovado: `docs/superpowers/specs/2026-07-27-hub-indicadores-inha
 
 ---
 
-## Modelo de execução (OBRIGATÓRIO)
-
-**Opus 5 em esforço Alto atua como orquestrador. As tarefas de implementação são
-executadas por agentes Sonnet lançados pelo orquestrador.**
-
-- O orquestrador (Opus 5 — Alto) é responsável por: entender o pedido, planejar,
-  decompor em tarefas, definir contratos entre as partes, revisar o que volta dos
-  agentes e integrar. Ele **não** escreve o grosso do código.
-- A implementação é delegada a agentes **Sonnet** (`Agent` com `model: "sonnet"`,
-  ou `agent(..., { model: 'sonnet' })` dentro de um `Workflow`).
-- Cada agente recebe uma tarefa **autocontida**: arquivos que pode tocar, tokens e
-  componentes que deve usar, e o critério de pronto. Nada de "veja o resto do projeto".
-- Tarefas independentes são lançadas **em paralelo**, num único bloco de chamadas.
-- O orquestrador **sempre revisa** o retorno de cada agente antes de considerar a
-  tarefa concluída — nenhum código entra sem revisão.
-- Exceções em que o orquestrador escreve direto: edições triviais de uma linha,
-  correções durante revisão, e os arquivos de fundação do design system
-  (`src/styles/tokens.css`, `tailwind.config.ts`, `src/lib/domains.ts`), porque são
-  o contrato que todos os agentes consomem.
-
----
-
 ## Direção de design (não negociável)
 
 O hub adota o **mesmo layout e tratamento visual do `hub_amyris`**, recolorido para a
@@ -158,6 +136,65 @@ tarefa. O info nunca pode ficar defasado em relação ao cálculo real.
   real; não inventa dias sem coleta). **Quadro médio por mês**: média das fotografias do mês.
 - Botão **info** (`InfoIndicador`) com todas as regras em linguagem de negócio.
 
+### Módulo de EPI — Controle de utilização de EPI (Fases 0–2 prontas)
+Primeiro módulo **transacional** do hub (escreve dados de negócio). Camada em `src/lib/epi/`
+(regras no topo de `index.ts`); models `epi_*` no `schema.prisma`, criados por `prisma/sql/001_epi.sql`.
+- **Agregado central = SessaoTurno** (cliente + CR + turno + data): N respostas + 1 validação.
+  1 sessão por turno/dia (`@@unique`), 1 resposta por pessoa/sessão, 1 validação por sessão.
+- **Identidade = HMAC do CPF** (`cpf.ts`, `EPI_CPF_SECRET`). NUNCA CPF em claro nem na URL.
+  Matrícula é só informativa (colide entre CRs). A `matricula` da SRA **não identifica pessoa**.
+- **Quadro de liderados é DERIVADO AO VIVO** do quadro ativo do CR (`colaboradores.ts`, lê
+  `ft_colaboradores_sra` com `dt_demissao IS NULL` — não a `vw_sra_geral`). Admissão aparece,
+  desligamento some. `atribuicao.ts` só guarda **em qual turno** a pessoa está; ativo sem turno
+  vigente = "não alocado" (sinalizado). Vínculos usam vigência (`fimEm`), nunca delete.
+- **Checklist é BIBLIOTECA GLOBAL versionada** (`config.ts`): `ChecklistTemplate` não pertence a
+  cliente/CR — é criado uma vez (seção **Checklists**, `/dashboards/epi/checklists`) e **vinculado**
+  a qualquer CR (`ClienteCr.checklistTemplateId`), reaproveitável entre clientes. Na tela dá para
+  **criar, renomear (PATCH), editar itens** (pré-carrega a versão atual e publica uma nova) e
+  **excluir** (soft-delete `ativo=false`; **bloqueado com 409 se vinculado** a algum setor). Editar
+  publicado cria versão nova; a antiga fica no histórico. `versaoPublicadaDoCr(cr)` resolve pelo
+  vínculo do CR. `POST /api/epi/crs/checklist` vincula; `PATCH/DELETE /api/epi/templates/[id]`.
+- **Papéis** (`papeis.ts`/`escopo.ts`): ADMIN (isAdmin global) configura tudo; PARAMETRIZADOR
+  aloca. **Líder é por SETOR (CR): `LiderCr`** (cliente+cr+usuário, vigência) — 1 líder responde por
+  vários CRs e um CR pode ter vários líderes; ser líder de um CR habilita validar **todos os turnos**
+  dele. `getTurnoIdsDoLider` deriva de `LiderCr` (+ `ResponsavelTurno` legado). `podeVerValidacoes(escopo)`
+  = admin ou tem turno como líder. Gestão em **`/dashboards/epi/lideres`** (escolhe usuário + multi-CR).
+  `escopoDoUsuario()` centraliza QUEM vê os dados de QUEM. Guardas em `guardas.ts` **honram o acesso
+  livre** de dev (senão os route handlers dariam 401 em dev).
+- **UI para usuário comum (não-dev):** a configuração é um **ASSISTENTE guiado**
+  (`/dashboards/epi/configurar`, `AssistenteConfiguracao.tsx`): cliente → setor (CR) → turno +
+  líder → checklist → pessoas, um passo por vez, com instrução em cada etapa. **Em lote:** o passo
+  de turnos cria VÁRIOS de uma vez; o de checklist VINCULA um da biblioteca (ou cria novo); o de
+  pessoas aloca cobrindo os vários turnos (chips de turno por pessoa + "todos para"). O líder é
+  **escolhido de uma lista de usuários do hub** (`listarUsuariosHub`), nunca UUID digitado. A
+  sidebar do EPI tem **Configurar**, **Checklists**, **Líderes** e **Validações**. As telas granulares antigas
+  (clientes/turnos/checklists/alocacoes/membros) continuam existindo, mas fora da navegação.
+- **QR Code** (`QrLinkPublico.tsx`, lib `qrcode.react`): ao concluir um setor no assistente (e no
+  card de turno) mostra o **QR do link público** `/p/<token>` com copiar / abrir / **imprimir**
+  (janela de impressão dedicada). **Dropdowns** (`Combobox`/`MultiCombobox`) renderizam o menu num
+  **portal** (`position: fixed`, z-index alto) — não são mais cortados por `overflow` nem ficam
+  atrás de cards `.glass` (que criam stacking context via blur).
+- Escrita por route handlers `/api/epi/*` (validação **zod** em `schemas.ts`, guardas + padrão de
+  erro `{ error }`); `GET /api/epi/colaboradores?cr=` serve o quadro ativo ao assistente.
+  Componentes client em `src/components/epi/`.
+- **Execução (Fase 2, pronta):** cada turno tem um **token público estável** (`token_publico`),
+  usado no QR/link. `sessao.ts` resolve/cria a sessão do dia de forma **idempotente** na 1ª leitura
+  (data de negócio America/Sao_Paulo em `datas.ts`; congela a versão publicada do checklist).
+  - **Rota pública** `/p/[token]` (fora de `/dashboards`, liberada no `middleware.ts`): liderado
+    escolhe o nome do turno + digita CPF (conferido por HMAC) e marca cada item conforme/não conforme.
+    POST em `/p/[token]/responder`. A resposta congela snapshot (nome/cargo/CR).
+  - **Validação do líder**: `/dashboards/epi/validacoes` (lista do dia no escopo) + `/[id]` (revisão
+    visual). A tela lista **TODOS os liderados alocados** (quadro ativo ∩ atribuição) unidos a quem
+    preencheu, com status (Conforme / Não conforme / Não preencheu) e um toggle **Presente/Ausente**.
+    O líder marca a **presença** de cada um — resolve escalas de revezamento (ex.: **12x36**): só se
+    cobra preenchimento de quem estava presente. `validarSessao` grava `PresencaSessao` (por pessoa) +
+    `ValidacaoSessao` com `hashConteudo` (base da assinatura futura) e fecha a sessão. Exige ao menos
+    **um presente que preencheu**. **Assinatura NÃO capturada por ora.**
+  - **Turno tem `diasSemana`** (dias em que espera preenchimento). O assistente tem atalhos "Seg a Sex",
+    "Seg a Sáb" e "Todos os dias" — 12x36 usa **Todos os dias** (a presença é resolvida na validação).
+- **Falta (Fase 3+):** **indicador** de aderência (validadas ÷ esperadas) e não conformidade por
+  tipo de EPI (entra em `domains.ts` no domínio Segurança, com botão info); captura de **assinatura**.
+
 ### Componentes reutilizáveis
 `src/components/ui/{Combobox,MultiCombobox,button,card,input,label}.tsx`,
 `src/components/dashboard/{InfoIndicador,FiltrosQuadro,BarrasQuadro,LinhaQuadro,EmConstrucao}.tsx`,
@@ -172,15 +209,30 @@ tarefa. O info nunca pode ficar defasado em relação ao cálculo real.
   médio crescem conforme novas coletas entram. Nomes (gerente, CR) vêm em CAIXA ALTA; a
   exibição capitaliza com `tituloNome` mantendo o valor bruto para filtrar.
 
+### Banco de dados — REGRA CRÍTICA (NUNCA `prisma db push`)
+O `DATABASE_URL` (Prisma) e o `DATABASE_URL_INHAUS` (SRA) apontam para o **mesmo Postgres
+compartilhado** (`db_inhaus`). Esse banco guarda, no schema `public`, tanto as tabelas do hub
+(`auth_users`, `epi_*`) quanto as tabelas da **RPA/SRA** (`ft_colaboradores_sra`,
+`ft_colaboradores_sra_diario`, `ft_ponto_smartcontrol`, `cfg_cargos_excluidos`).
+- **NUNCA rodar `prisma db push` nem `prisma migrate` neste banco.** O Prisma assume ser dono
+  do schema inteiro e tenta **DROPAR** as tabelas da SRA (não estão no `schema.prisma`) —
+  perda de dados real (dezenas de milhares de linhas). `db:push`/`db:migrate` estão banidos.
+- O schema das tabelas do hub é aplicado por **SQL manual idempotente** (`prisma/sql/*.sql`,
+  `CREATE TABLE IF NOT EXISTS` + FKs em `DO $$ ... duplicate_object`). Ex.: `prisma/sql/001_epi.sql`.
+- Fluxo ao mudar um model: editar `schema.prisma` → escrever o SQL aditivo correspondente em
+  `prisma/sql/` → aplicar no banco → `prisma generate` (só gera o Client, não toca no banco).
+- O Prisma Client lê/escreve normalmente em tabelas criadas à mão, desde que batam com os models.
+
 ### Notas de desenvolvimento
 - Rodar: dev server via `.claude/launch.json` (nome `hub-inhaus-dev`, porta 3000). Nunca
   subir servidor por outros meios.
 - Se o CSS/HMR "travar" (ex.: erro fantasma `border-border`, estilos stale), **pare o dev
   server, apague `.next` e suba de novo** — o build de produção (`npm run build`) é a fonte
   de verdade; ele valida com SWC igual ao dev.
-- Verificação de cada entrega: `npx tsc --noEmit`, `npm run build` (25/25 rotas hoje) e,
-  quando há dado, conferência dos números direto no banco antes de considerar pronto.
-- `.env.local` (fora do git) guarda `HUB_ACESSO_LIVRE=1` e `DATABASE_URL_INHAUS`.
+- Verificação de cada entrega: `npx tsc --noEmit`, `npm run build` e, quando há dado,
+  conferência dos números direto no banco antes de considerar pronto.
+- `.env.local` (fora do git) guarda `HUB_ACESSO_LIVRE=1`, `DATABASE_URL_INHAUS`, `DATABASE_URL`
+  e `EPI_CPF_SECRET` (segredo do HMAC do CPF no módulo de EPI).
 
 ### Documentos
 - Spec de design: `docs/superpowers/specs/2026-07-27-hub-indicadores-inhaus-design.md`.

@@ -15,9 +15,13 @@ type DashboardShellProps = {
   nome: string | null
   email: string | null
   isAdmin: boolean
+  /** Pode configurar EPI (admin/Segurança) — mostra Configurar/Checklists/Líderes. */
+  epiConfig?: boolean
+  /** Pode validar EPI (admin/Segurança/líder) — mostra Validações. */
+  epiValida?: boolean
 }
 
-export function DashboardShell({ children, nome, email, isAdmin }: DashboardShellProps) {
+export function DashboardShell({ children, nome, email, isAdmin, epiConfig = false, epiValida = false }: DashboardShellProps) {
   const router = useRouter()
   const [drawer, setDrawer] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -46,6 +50,8 @@ export function DashboardShell({ children, nome, email, isAdmin }: DashboardShel
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-navy/10 bg-white/80 backdrop-blur-xl lg:block">
         <DashboardSidebar
           isAdmin={isAdmin}
+          epiConfig={epiConfig}
+          epiValida={epiValida}
           nome={nome}
           email={email}
           onLogout={handleLogout}
@@ -75,6 +81,8 @@ export function DashboardShell({ children, nome, email, isAdmin }: DashboardShel
         >
           <DashboardSidebar
             isAdmin={isAdmin}
+            epiConfig={epiConfig}
+            epiValida={epiValida}
             nome={nome}
             email={email}
             onLogout={handleLogout}

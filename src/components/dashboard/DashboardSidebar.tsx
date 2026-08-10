@@ -2,7 +2,17 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, UserCog, LogOut, UserRound, type LucideIcon } from "lucide-react"
+import {
+  LayoutDashboard,
+  UserCog,
+  LogOut,
+  UserRound,
+  HardHat,
+  ClipboardList,
+  ClipboardCheck,
+  ListChecks,
+  type LucideIcon,
+} from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { InhausLogo } from "@/components/brand/InhausLogo"
@@ -29,16 +39,47 @@ const GRUPO_GERAL: NavGroup = {
 // Um grupo por domínio — a FONTE DE VERDADE é src/lib/domains.ts. O título do
 // grupo e o ícone vêm do domínio; cada tela usa o ícone próprio (tela.icone),
 // com fallback para LayoutDashboard caso alguma fique sem ícone definido.
+// Telas marcadas como `emBreve` (ainda não construídas) NÃO entram na sidebar —
+// só aparecem na command palette, como mapa do produto. Grupos que ficam sem
+// nenhuma tela pronta são omitidos.
 const GRUPOS_DOMINIO: NavGroup[] = DOMINIOS.map((dominio) => ({
   title: dominio.label,
   icon: dominio.icone,
-  items: dominio.telas.map((tela) => ({
-    href: tela.href,
-    label: tela.label,
-    icon: tela.icone ?? LayoutDashboard,
-  })),
-}))
+  items: dominio.telas
+    .filter((tela) => !tela.emBreve)
+    .map((tela) => ({
+      href: tela.href,
+      label: tela.label,
+      icon: tela.icone ?? LayoutDashboard,
+    })),
+})).filter((grupo) => grupo.items.length > 0)
 
+// Módulo de EPI — navegação POR PAPEL:
+//  - quem CONFIGURA (admin/Segurança) vê Configurar/Checklists/Líderes + Validações;
+//  - quem só VALIDA (líder) vê apenas Validações — some o problema de "o líder não
+//    enxerga o menu e só chega pela URL".
+const EPI_ITEM_VALIDACOES: NavItem = {
+  href: "/dashboards/epi/validacoes",
+  label: "Validações",
+  icon: ClipboardCheck,
+}
+const EPI_ITENS_CONFIG: NavItem[] = [
+  { href: "/dashboards/epi/configurar", label: "Configurar", icon: ClipboardList },
+  { href: "/dashboards/epi/checklists", label: "Checklists", icon: ListChecks },
+  { href: "/dashboards/epi/lideres", label: "Líderes", icon: UserCog },
+]
+
+function grupoEpi(epiConfig: boolean, epiValida: boolean): NavGroup | null {
+  if (epiConfig) {
+    return { title: "EPI", icon: HardHat, items: [...EPI_ITENS_CONFIG, EPI_ITEM_VALIDACOES] }
+  }
+  if (epiValida) {
+    return { title: "EPI", icon: HardHat, items: [EPI_ITEM_VALIDACOES] }
+  }
+  return null
+}
+
+// Administração — só para admin. Gestão de usuários do hub (acesso + telas visíveis).
 const GRUPO_ADMIN: NavGroup = {
   title: "Administração",
   icon: UserCog,
@@ -48,6 +89,8 @@ const GRUPO_ADMIN: NavGroup = {
 export function DashboardSidebar({
   onNavigate,
   isAdmin = false,
+  epiConfig = false,
+  epiValida = false,
   nome = null,
   email = null,
   onLogout,
@@ -55,15 +98,21 @@ export function DashboardSidebar({
 }: {
   onNavigate?: () => void
   isAdmin?: boolean
+  epiConfig?: boolean
+  epiValida?: boolean
   nome?: string | null
   email?: string | null
   onLogout?: () => void
   signingOut?: boolean
 }) {
   const pathname = usePathname()
-  const grupos = isAdmin
-    ? [GRUPO_GERAL, ...GRUPOS_DOMINIO, GRUPO_ADMIN]
-    : [GRUPO_GERAL, ...GRUPOS_DOMINIO]
+  const grupoEpiAtual = grupoEpi(epiConfig, epiValida)
+  const grupos = [
+    GRUPO_GERAL,
+    ...GRUPOS_DOMINIO,
+    ...(grupoEpiAtual ? [grupoEpiAtual] : []),
+    ...(isAdmin ? [GRUPO_ADMIN] : []),
+  ]
 
   return (
     <div className="flex h-full flex-col gap-6 px-4 py-6">

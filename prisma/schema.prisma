@@ -31,3 +31,281 @@ model AuthUser {
 
   @@map("auth_users")
 }
+
+// ===========================================================================
+// MÓDULO EPI — Controle de utilização de EPI.
+//
+// Primeiro módulo TRANSACIONAL do hub (escreve dados de negócio). Convive no
+// mesmo Postgres (db_inhaus) das tabelas da SRA, então o quadro ativo de
+// colaboradores é lido de public.ft_colaboradores_sra (dt_demissao IS NULL) —
+// nunca duplicado aqui.
+//
+// Regras de negócio (mantidas em sincronia com os textos de InfoIndicador e com
+// os comentários no topo dos módulos de src/lib/epi):
+//   - Identidade do colaborador = HMAC do CPF (cpf_hash). Nunca CPF em claro.
+//     Matrícula é apenas informativa (colide entre CRs, não identifica pessoa).
+//   - A lista de liderados de um turno é DERIVADA AO VIVO do quadro ativo do CR;
+//     esta modelagem guarda apenas a ATRIBUIÇÃO a um turno, não a presença.
+//   - Checklist é versionado e imutável após publicado (documento de conformidade).
+//   - A resposta congela um snapshot (nome/cargo/CR) no momento em que é gravada.
+//   - 1 sessão por turno/dia; 1 resposta por pessoa/sessão; 1 validação por sessão.
+// ===========================================================================
+
+// Cliente atendido. Guarda-chuva de 1..N centros de resultado (CRs).
+model Cliente {
+  id        Int                 @id @default(autoincrement())
+  nome      String
+  ativo     Boolean             @default(true)
+  crs       ClienteCr[]
+  turnos    Turno[]
+  lideres   LiderCr[]
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+
+  @@map("epi_cliente")
+}
+
+// Líder responsável por um CR (setor) de um cliente. Um líder pode responder por
+// VÁRIOS CRs (várias linhas) e um CR pode ter mais de um líder. Ser líder de um CR
+// habilita validar TODOS os turnos daquele CR. Vigência (fimEm) em vez de delete.
+model LiderCr {
+  id         Int       @id @default(autoincrement())
+  clienteId  Int       @map("cliente_id")
+  cr         String
+  authUserId String    @map("auth_user_id") // usuário do hub (global_auth)
+  nome       String // snapshot para exibir
+  inicioEm   DateTime  @default(now()) @map("inicio_em")
+  fimEm      DateTime? @map("fim_em") // null = vigente
+  cliente    Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
+  @@index([authUserId])
+  @@index([cr])
+  @@map("epi_lider_cr")
+}
+
+// Mapeia um CR da SRA a um cliente. O trabalho é SEMPRE isolado por CR (o
+// checklist varia de setor para setor), por isso o CR é único: pertence a um
+// único cliente.
+model ClienteCr {
+  id                  Int                @id @default(autoincrement())
+  clienteId           Int                @map("cliente_id")
+  cr                  String             @unique // valor bruto da SRA (mantém CAIXA ALTA para casar na query)
+  // Checklist (da biblioteca global) que este CR usa. Null = ainda não vinculado.
+  checklistTemplateId Int?               @map("checklist_template_id")
+  ativo               Boolean            @default(true)
+  cliente             Cliente            @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  checklist           ChecklistTemplate? @relation(fields: [checklistTemplateId], references: [id])
+
+  @@map("epi_cliente_cr")
+}
+
+// Turno de um CR. A SRA não informa turno (a coluna "escala" é regime de
+// jornada), por isso ele é cadastrado aqui. `diasSemana` (0=domingo..6=sábado)
+// define em que dias o turno ESPERA preenchimento — base do cálculo de aderência.
+model Turno {
+  id           Int                @id @default(autoincrement())
+  clienteId    Int                @map("cliente_id")
+  cr           String
+  nome         String // "Manhã", "1º turno", etc.
+  diasSemana   Int[]              @map("dias_semana")
+  // Token público ESTÁVEL do turno: é o que vai no QR/link. Ao ser aberto,
+  // resolve/cria a sessão do dia. Único e opaco.
+  tokenPublico String?            @unique @map("token_publico")
+  ativo        Boolean            @default(true)
+  cliente      Cliente            @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  atribuicoes  AtribuicaoTurno[]
+  responsaveis ResponsavelTurno[]
+  sessoes      SessaoTurno[]
+  createdAt    DateTime           @default(now()) @map("created_at")
+
+  @@index([clienteId])
+  @@index([cr])
+  @@map("epi_turno")
+}
+
+// Checklist da BIBLIOTECA GLOBAL. Não pertence a um cliente/CR: é criado uma vez e
+// VINCULADO a qualquer CR (ClienteCr.checklistTemplateId). O conteúdo vive nas versões.
+model ChecklistTemplate {
+  id        Int               @id @default(autoincrement())
+  nome      String
+  ativo     Boolean           @default(true)
+  versoes   ChecklistVersao[]
+  crs       ClienteCr[] // CRs que usam este checklist
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  @@map("epi_checklist_template")
+}
+
+// Versão imutável de um checklist. Publicar congela; editar um publicado = criar
+// uma versão nova. Assim o histórico nunca passa a "mentir". `itens` guarda a
+// parametrização: [{ id, rotulo, epi, obrigatorio }].
+model ChecklistVersao {
+  id          Int               @id @default(autoincrement())
+  templateId  Int               @map("template_id")
+  versao      Int
+  publicadoEm DateTime?         @map("publicado_em") // null = rascunho editável; setado = imutável
+  itens       Json
+  template    ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  sessoes     SessaoTurno[]
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  @@unique([templateId, versao])
+  @@map("epi_checklist_versao")
+}
+
+// Papel de EPI de um usuário do global_auth. ADMIN não entra aqui (usa o isAdmin
+// global de AuthUser); esta tabela guarda PARAMETRIZADOR e LIDER, com escopo
+// opcional por cliente/CR. Ligado ao global_auth pelo UUID (auth_user_id).
+model EpiMembro {
+  id         Int      @id @default(autoincrement())
+  authUserId String   @map("auth_user_id")
+  papel      String // "PARAMETRIZADOR" | "LIDER"
+  clienteId  Int?     @map("cliente_id") // escopo opcional (null = todos)
+  cr         String? // escopo opcional por CR
+  ativo      Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([authUserId])
+  @@map("epi_membro")
+}
+
+// Atribuição de um LIDERADO a um turno. A PRESENÇA no checklist é derivada ao
+// vivo do quadro ativo (ft_colaboradores_sra, dt_demissao null); esta linha só
+// diz EM QUAL turno a pessoa está. Ativo do CR sem linha vigente aqui = "não
+// alocado" (sinalizado para o PARAMETRIZADOR). Vigência em vez de delete.
+model AtribuicaoTurno {
+  id        Int       @id @default(autoincrement())
+  turnoId   Int       @map("turno_id")
+  cr        String
+  cpfHash   String    @map("cpf_hash") // HMAC do CPF — identidade
+  matricula String? // informativo (colide entre CRs)
+  inicioEm  DateTime  @default(now()) @map("inicio_em")
+  fimEm     DateTime? @map("fim_em") // null = vigente
+  turno     Turno     @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+
+  @@index([turnoId])
+  @@index([cr, cpfHash])
+  @@map("epi_atribuicao_turno")
+}
+
+// Líder(es) responsável(is) por validar um turno. Sempre têm acesso ao sistema
+// (ligados ao global_auth por auth_user_id). Vigência em vez de delete.
+model ResponsavelTurno {
+  id         Int       @id @default(autoincrement())
+  turnoId    Int       @map("turno_id")
+  authUserId String    @map("auth_user_id")
+  nome       String // snapshot para exibir
+  inicioEm   DateTime  @default(now()) @map("inicio_em")
+  fimEm      DateTime? @map("fim_em") // null = vigente
+  turno      Turno     @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+
+  @@index([turnoId])
+  @@index([authUserId])
+  @@map("epi_responsavel_turno")
+}
+
+// Sessão diária de um turno. Criada de forma idempotente na primeira leitura do
+// QR (não por cron). `token` é opaco e usado no link público. `data` é a data de
+// NEGÓCIO do turno (turno noturno pertence ao dia em que começa).
+model SessaoTurno {
+  id                Int              @id @default(autoincrement())
+  turnoId           Int              @map("turno_id")
+  checklistVersaoId Int              @map("checklist_versao_id")
+  data              DateTime         @db.Date
+  token             String           @unique
+  status            String           @default("ABERTA") // ABERTA | AGUARDANDO_VALIDACAO | VALIDADA
+  turno             Turno            @relation(fields: [turnoId], references: [id], onDelete: Cascade)
+  checklistVersao   ChecklistVersao  @relation(fields: [checklistVersaoId], references: [id])
+  respostas         RespostaEpi[]
+  presencas         PresencaSessao[]
+  validacao         ValidacaoSessao?
+  createdAt         DateTime         @default(now()) @map("created_at")
+
+  @@unique([turnoId, data]) // idempotência: 1 sessão por turno/dia
+  @@map("epi_sessao_turno")
+}
+
+// Presença de um liderado num turno/dia, marcada pelo LÍDER na validação. Resolve
+// escalas de revezamento (ex.: 12x36): todos os alocados aparecem; o líder marca
+// quem estava presente. Quem está ausente não precisa ter preenchido o checklist.
+model PresencaSessao {
+  id       Int         @id @default(autoincrement())
+  sessaoId Int         @map("sessao_id")
+  cpfHash  String      @map("cpf_hash")
+  nome     String
+  presente Boolean     @default(true)
+  sessao   SessaoTurno @relation(fields: [sessaoId], references: [id], onDelete: Cascade)
+
+  @@unique([sessaoId, cpfHash])
+  @@map("epi_presenca_sessao")
+}
+
+// Resposta de um colaborador numa sessão. Guarda SNAPSHOT congelado (nome/cargo/
+// cr) — documento de conformidade não muda quando a SRA muda. `conforme` = false
+// se qualquer item foi marcado não conforme (sinaliza o dashboard futuro).
+model RespostaEpi {
+  id           Int         @id @default(autoincrement())
+  sessaoId     Int         @map("sessao_id")
+  cpfHash      String      @map("cpf_hash")
+  nome         String
+  cargo        String?
+  cr           String
+  respostas    Json // [{ itemId, rotulo, conforme: bool }]
+  conforme     Boolean
+  respondidoEm DateTime    @default(now()) @map("respondido_em")
+  sessao       SessaoTurno @relation(fields: [sessaoId], references: [id], onDelete: Cascade)
+
+  @@unique([sessaoId, cpfHash]) // 1 resposta por pessoa por sessão
+  @@map("epi_resposta")
+}
+
+// Validação do líder que fecha a sessão do turno. `hashConteudo` é a base da
+// assinatura futura (fase 4).
+model ValidacaoSessao {
+  id           Int         @id @default(autoincrement())
+  sessaoId     Int         @unique @map("sessao_id")
+  authUserId   String      @map("auth_user_id")
+  nomeLider    String      @map("nome_lider")
+  validadoEm   DateTime    @default(now()) @map("validado_em")
+  hashConteudo String      @map("hash_conteudo")
+  assinatura   String? // reservado para a fase 4
+  sessao       SessaoTurno @relation(fields: [sessaoId], references: [id], onDelete: Cascade)
+
+  @@map("epi_validacao_sessao")
+}
+
+// ===========================================================================
+// DIMENSÃO DE CENTRO DE RESULTADO (CR) — dm_cr.
+//
+// Importada da planilha "Centro_de_Custo" do ERP (só as colunas de cabeçalho
+// verde). Complementa o contrato: pelo CR chega-se ao grupo de cliente
+// (nomeGrpCliente), evitando redigitar o cliente no sistema.
+//
+// `cr` é a chave e SEMPRE tem 5 caracteres (numéricos com menos de 5 são
+// zero-padeados na importação; há CRs alfanuméricos, por isso é String).
+// Tabela criada por prisma/sql/006_dm_cr.sql (SQL manual, nunca db push).
+// ===========================================================================
+model DmCr {
+  cr               String    @id @db.VarChar(5)
+  dataInicioCr     DateTime? @map("data_inicio_cr") @db.Date
+  bloqueio         String?
+  descriCr         String?   @map("descri_cr")
+  regional         String?
+  conqPerd         String?   @map("conq_perd")
+  descriNegocio    String?   @map("descri_negocio")
+  descriSolucao    String?   @map("descri_solucao")
+  nomeCliente      String?   @map("nome_cliente")
+  nomeGrpCliente   String?   @map("nome_grp_cliente")
+  pec              String?
+  diretorExecutivo String?   @map("diretor_executivo")
+  diretorRegional  String?   @map("diretor_regional")
+  gerenteRegional  String?   @map("gerente_regional")
+  gerente          String?
+  supervisor       String?
+  atualizadoEm     DateTime  @default(now()) @map("atualizado_em") @db.Timestamptz(6)
+
+  @@index([nomeGrpCliente])
+  @@index([regional])
+  @@map("dm_cr")
+}
