@@ -9,8 +9,9 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
-    "db:push": "prisma db push"
+    "db:push": "node -e \"console.error('BANIDO: prisma db push dropa as tabelas da SRA neste banco compartilhado. Use SQL manual em prisma/sql/*.sql. Ver CLAUDE.md.'); process.exit(1)\""
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -25,10 +26,12 @@
     "next": "^14.2.0",
     "ogl": "^1.0.11",
     "pg": "^8.22.0",
+    "qrcode.react": "^4.2.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "recharts": "^3.8.1",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^20.12.0",
