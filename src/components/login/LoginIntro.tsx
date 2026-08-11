@@ -19,28 +19,6 @@ const EASING = "cubic-bezier(0.22, 1, 0.36, 1)"
 const IDLE_TRANSFORM = "translate(0px, 0px) scale(1) translate(-50%, -50%)"
 const PRE_ENTER_TRANSFORM = "translate(0px, 0px) scale(0.92) translate(-50%, -50%)"
 
-// Textura de fundo do overlay: rotas convergindo ao centro, no mesmo conceito
-// logística + tecnologia do resto do login. É estática (sem animação própria),
-// só uma insinuação leve de grade — por isso opacidade bem baixa.
-const CONVERGING_LINES: Array<[number, number]> = [
-  [0, 0],
-  [25, 0],
-  [50, 0],
-  [75, 0],
-  [100, 0],
-  [0, 25],
-  [100, 25],
-  [0, 50],
-  [100, 50],
-  [0, 75],
-  [100, 75],
-  [0, 100],
-  [25, 100],
-  [50, 100],
-  [75, 100],
-  [100, 100],
-]
-
 type Phase = "idle" | "migrate"
 
 export function LoginIntro() {
@@ -215,25 +193,6 @@ export function LoginIntro() {
         transitionTimingFunction: EASING,
       }}
     >
-      <svg
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        className="absolute inset-0 h-full w-full"
-      >
-        {CONVERGING_LINES.map(([x, y], index) => (
-          <line
-            key={`${x}-${y}-${index}`}
-            x1={x}
-            y1={y}
-            x2={50}
-            y2={50}
-            stroke="#4FA8C4"
-            strokeWidth={0.12}
-            opacity={0.14}
-          />
-        ))}
-      </svg>
-
       {!reducedMotion && (
         <div
           className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full"
