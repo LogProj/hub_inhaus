@@ -11,6 +11,7 @@ import {
   ClipboardList,
   ClipboardCheck,
   ListChecks,
+  Activity,
   type LucideIcon,
 } from "lucide-react"
 
@@ -64,6 +65,7 @@ const EPI_ITEM_VALIDACOES: NavItem = {
   icon: ClipboardCheck,
 }
 const EPI_ITENS_CONFIG: NavItem[] = [
+  { href: "/dashboards/epi/acompanhamento", label: "Acompanhamento", icon: Activity },
   { href: "/dashboards/epi/configurar", label: "Configurar", icon: ClipboardList },
   { href: "/dashboards/epi/checklists", label: "Checklists", icon: ListChecks },
   { href: "/dashboards/epi/lideres", label: "Líderes", icon: UserCog },
