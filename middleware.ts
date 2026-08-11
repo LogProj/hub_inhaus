@@ -18,9 +18,9 @@ export const ROTA_INICIAL = "/dashboards"
 // Tudo que NÃO exige sessão. O resto do app é protegido por padrão — assim,
 // adicionar um domínio novo não exige lembrar de atualizar esta lista.
 // `/home` é a landing (hero) pública, preservada fora do fluxo principal.
-// `/p` é o preenchimento público do checklist de EPI (QR/link do turno): sem
-// login, autorizado pelo token do turno + verificação do CPF (ver src/lib/epi).
-const rotasPublicas = ["/login", "/home", "/p"]
+// (v2: o preenchimento público de EPI por QR/CPF foi removido — quem registra a
+// utilização é o líder, logado. Ver docs/versoes/…-v1 para o fluxo antigo.)
+const rotasPublicas = ["/login", "/home"]
 
 /**
  * Acesso livre de desenvolvimento. A checagem é repetida aqui em vez de

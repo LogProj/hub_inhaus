@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge"
 import { Combobox, type ComboOption } from "@/components/ui/Combobox"
 import { ToastProvider, useToast } from "@/components/ui/toast"
 import { postJson, delJson } from "@/components/epi/api"
-import { QrLinkPublico } from "@/components/epi/QrLinkPublico"
 
 type ClienteView = { id: number; nome: string; crs: string[] }
 type Responsavel = { id: number; nome: string; authUserId: string }
@@ -177,8 +176,6 @@ function TurnoCard({ turno }: { turno: TurnoView }) {
         </div>
         {!turno.ativo && <Badge variant="warn">Inativo</Badge>}
       </div>
-
-      {turno.tokenPublico && <QrLinkPublico token={turno.tokenPublico} compacto className="mt-3" />}
 
       <ul className="mt-3 space-y-1.5">
         {turno.responsaveis.length === 0 ? (

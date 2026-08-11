@@ -60,8 +60,8 @@ const GRUPOS_DOMINIO: NavGroup[] = DOMINIOS.map((dominio) => ({
 //  - quem só VALIDA (líder) vê apenas Validações — some o problema de "o líder não
 //    enxerga o menu e só chega pela URL".
 const EPI_ITEM_VALIDACOES: NavItem = {
-  href: "/dashboards/epi/validacoes",
-  label: "Validações",
+  href: "/dashboards/epi/utilizacao",
+  label: "Utilização de EPIs",
   icon: ClipboardCheck,
 }
 const EPI_ITENS_CONFIG: NavItem[] = [

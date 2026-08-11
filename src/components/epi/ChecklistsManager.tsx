@@ -113,7 +113,7 @@ function ChecklistCard({ checklist }: { checklist: ChecklistView }) {
   async function salvarVersao() {
     const validos = itens.filter((it) => it.pergunta.trim())
     if (validos.length === 0) {
-      erro("Checklist vazio", "Adicione ao menos um item com pergunta.")
+      erro("Checklist vazio", "Adicione ao menos um EPI.")
       return
     }
     setOcupado(true)
@@ -215,7 +215,7 @@ function ChecklistCard({ checklist }: { checklist: ChecklistView }) {
           checklist.versoes.map((v) => (
             <li key={v.id} className="flex items-center gap-2 rounded-xl border border-border/60 bg-white/70 px-3 py-2">
               <span className="text-sm font-medium text-navy">v{v.versao}</span>
-              <span className="text-xs text-muted-foreground">{v.itens} item(ns)</span>
+              <span className="text-xs text-muted-foreground">{v.itens} EPI(s)</span>
               {v.publicado ? <Badge variant="success">Publicada</Badge> : <Badge variant="warn">Rascunho</Badge>}
             </li>
           ))
@@ -225,7 +225,7 @@ function ChecklistCard({ checklist }: { checklist: ChecklistView }) {
       {editando ? (
         <div className="mt-4 rounded-2xl border border-dashed border-navy/20 p-4">
           <p className="mb-3 text-sm font-medium text-navy">
-            {checklist.itensAtuais.length > 0 ? "Editar itens (gera uma nova versão)" : "Itens do checklist"}
+            {checklist.itensAtuais.length > 0 ? "Editar EPIs (gera uma nova versão)" : "EPIs do checklist"}
           </p>
           <div className="space-y-2">
             {itens.map((it, idx) => (
@@ -234,14 +234,8 @@ function ChecklistCard({ checklist }: { checklist: ChecklistView }) {
                 <Input
                   value={it.pergunta}
                   onChange={(e) => setItens((a) => a.map((x) => (x.id === it.id ? { ...x, pergunta: e.target.value } : x)))}
-                  placeholder="Pergunta (ex.: Está usando capacete?)"
+                  placeholder="EPI (ex.: Capacete, Luva, Botina…)"
                   className="h-9 min-w-[220px] flex-1"
-                />
-                <Input
-                  value={it.epi}
-                  onChange={(e) => setItens((a) => a.map((x) => (x.id === it.id ? { ...x, epi: e.target.value } : x)))}
-                  placeholder="EPI (opcional)"
-                  className="h-9 w-40"
                 />
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Checkbox
@@ -254,7 +248,7 @@ function ChecklistCard({ checklist }: { checklist: ChecklistView }) {
                   type="button"
                   onClick={() => setItens((a) => (a.length > 1 ? a.filter((x) => x.id !== it.id) : a))}
                   className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-600"
-                  aria-label="Remover item"
+                  aria-label="Remover EPI"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -263,7 +257,7 @@ function ChecklistCard({ checklist }: { checklist: ChecklistView }) {
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => setItens((a) => [...a, { id: novoId(), pergunta: "", epi: "", obrigatorio: true }])}>
-              <Plus className="h-4 w-4" /> Adicionar item
+              <Plus className="h-4 w-4" /> Adicionar EPI
             </Button>
             <span className="flex-1" />
             <Button type="button" variant="ghost" size="sm" onClick={() => setEditando(false)}>

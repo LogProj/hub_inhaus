@@ -169,5 +169,23 @@ export const validarSessaoIdSchema = z.object({
     .default([]),
 })
 
+// v2 — Utilização de EPIs: o líder registra, por colaborador do turno, ausência ou
+// as respostas por EPI (conforme/não conforme).
+export const registrarUtilizacaoSchema = z.object({
+  turnoId: z.number().int().positive(),
+  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+  entradas: z
+    .array(
+      z.object({
+        cpfHash: textoObrigatorio("Colaborador"),
+        ausente: z.boolean(),
+        respostas: z
+          .array(z.object({ epiId: textoObrigatorio("EPI"), conforme: z.boolean() }))
+          .default([]),
+      }),
+    )
+    .min(1, "Nada para registrar"),
+})
+
 export type ItemChecklist = z.infer<typeof itemChecklistSchema>
 export type RespostaItem = z.infer<typeof respostaItemSchema>

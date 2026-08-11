@@ -251,7 +251,10 @@ model RespostaEpi {
   nome         String
   cargo        String?
   cr           String
-  respostas    Json // [{ itemId, rotulo, conforme: bool }]
+  // v2: preenchida pelo LÍDER, por colaborador. `ausente` = colaborador não estava
+  // presente (não preenche EPI). Presente → respostas = [{ epiId, epi, conforme }].
+  ausente      Boolean     @default(false)
+  respostas    Json // v2: [{ epiId, epi, conforme }] · v1 (legado): [{ itemId, rotulo, conforme }]
   conforme     Boolean
   respondidoEm DateTime    @default(now()) @map("respondido_em")
   sessao       SessaoTurno @relation(fields: [sessaoId], references: [id], onDelete: Cascade)

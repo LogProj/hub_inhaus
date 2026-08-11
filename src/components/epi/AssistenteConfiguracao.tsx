@@ -24,7 +24,6 @@ import { Combobox } from "@/components/ui/Combobox"
 import { ToastProvider, useToast } from "@/components/ui/toast"
 import { tituloNome } from "@/lib/nomes"
 import { postJson } from "@/components/epi/api"
-import { QrLinkPublico } from "@/components/epi/QrLinkPublico"
 import { cn } from "@/lib/utils"
 
 type CrDisponivel = { cr: string; ativos: number; cliente: string | null }
@@ -474,25 +473,16 @@ function Assistente({ crsDisponiveis, checklists }: {
             </span>
             <h2 className="mt-4 font-display text-2xl font-semibold text-navy">CR configurado! 🎉</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              {turnosCriados.length} turno(s) de <strong>{clienteNome}</strong> prontos. Imprima ou compartilhe o
-              <strong> QR Code</strong> de cada turno com a equipe.
+              {turnosCriados.length} turno(s) de <strong>{clienteNome}</strong> prontos. Agora o líder registra a
+              <strong> utilização de EPIs</strong> do turno todo dia.
             </p>
-
-            <div className="mt-6 grid gap-6 sm:grid-cols-2">
-              {turnosCriados.map((t) => (
-                <div key={t.id} className="glass rounded-3xl p-5">
-                  <p className="mb-3 font-display text-base font-semibold text-navy">{t.nome}</p>
-                  {t.token && <QrLinkPublico token={t.token} titulo={`${t.nome} — ${clienteNome}`} tamanho={150} />}
-                </div>
-              ))}
-            </div>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
               <Button type="button" variant="outline" onClick={recomecarSetor}>
                 <Plus className="h-4 w-4" /> Configurar outro CR
               </Button>
               <Button type="button" variant="ghost" asChild>
-                <Link href="/dashboards/epi/validacoes">Ir para validações</Link>
+                <Link href="/dashboards/epi/utilizacao">Ir para Utilização de EPIs</Link>
               </Button>
             </div>
           </div>
