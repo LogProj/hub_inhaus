@@ -23,8 +23,11 @@ export default async function UsuariosPage() {
   }
   if (!isAdmin) redirect("/dashboards")
 
-  // Telas do hub para o seletor "quais painéis o usuário pode ver" (autorização local).
-  const telaOptions = TODAS_AS_TELAS.map((t) => ({
+  // Telas REAIS do hub para o seletor "quais painéis o usuário pode ver" (autorização
+  // local). Só as que existem — as marcadas `emBreve` (placeholders) ficam de fora.
+  // As telas de EPI não entram aqui: o acesso ao EPI é por PAPEL (Segurança/líder),
+  // não por esta lista.
+  const telaOptions = TODAS_AS_TELAS.filter((t) => !t.emBreve).map((t) => ({
     value: t.key,
     label: `${t.dominioLabel} · ${t.label}`,
   }))

@@ -77,9 +77,10 @@ export async function escopoDoUsuario(
     return { verTudo: true, turnoIdsComoLider: [], clienteIds: "todos", crs: "todos" }
   }
 
-  const turnoIdsComoLider = acesso.papeis.has("LIDER")
-    ? await getTurnoIdsDoLider(authUserId)
-    : []
+  // Ser líder é definido por LiderCr (tela de Líderes), NÃO por epi_membro. Então
+  // sempre resolvemos os turnos que o usuário lidera — quem tem LiderCr vigente de
+  // um CR com turnos passa a validar/preencher a Utilização daquele CR.
+  const turnoIdsComoLider = authUserId ? await getTurnoIdsDoLider(authUserId) : []
 
   const paramMembros = acesso.membros.filter((m) => m.papel === "PARAMETRIZADOR")
   const semRestricaoCliente = paramMembros.some((m) => m.clienteId == null)
