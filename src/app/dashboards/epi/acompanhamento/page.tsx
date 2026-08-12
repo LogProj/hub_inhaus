@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic"
 export default async function AcompanhamentoPage({
   searchParams,
 }: {
-  searchParams: { mes?: string }
+  searchParams: { mes?: string; cr?: string }
 }) {
   const ctx = await getAcessoEpiAtual()
   if (!ctx) redirect("/login")
@@ -23,7 +23,8 @@ export default async function AcompanhamentoPage({
 
   const mesParam = searchParams.mes
   const mes = mesParam && /^\d{4}-\d{2}$/.test(mesParam) ? mesParam : hojeSaoPaulo().iso.slice(0, 7)
-  const dados = await acompanhamentoMensal(mes)
+  const crFiltro = searchParams.cr && searchParams.cr.trim() ? searchParams.cr : null
+  const dados = await acompanhamentoMensal(mes, crFiltro)
 
   return (
     <div className="space-y-8">
@@ -46,7 +47,7 @@ export default async function AcompanhamentoPage({
           </InfoIndicador>
         }
       />
-      <AcompanhamentoEpi dados={dados} />
+      <AcompanhamentoEpi dados={dados} crFiltro={crFiltro} />
     </div>
   )
 }

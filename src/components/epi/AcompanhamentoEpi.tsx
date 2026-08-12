@@ -61,16 +61,23 @@ function TooltipCaixa({ titulo, linhas }: { titulo: string; linhas: string[] }) 
   )
 }
 
-export function AcompanhamentoEpi({ dados }: { dados: AcompanhamentoMes }) {
+export function AcompanhamentoEpi({ dados, crFiltro }: { dados: AcompanhamentoMes; crFiltro: string | null }) {
   const router = useRouter()
-  const [cr, setCr] = React.useState<string | null>(null)
 
-  const passaCr = <T extends { _cr: string }>(x: T) => !cr || x._cr === cr
-  const semPreenchimento = dados.semPreenchimento.filter(passaCr)
-  const naoConformidades = dados.naoConformidades.filter(passaCr)
-  const turnosSemSessao = dados.turnosSemSessao.filter(passaCr)
+  // Filtro é SERVER-SIDE: mudar mês/CR navega e recalcula tudo (KPIs, gráficos e
+  // listas seguem o CR). Preserva o outro parâmetro na navegação.
+  const navega = (mes: string, cr: string | null) => {
+    const params = new URLSearchParams()
+    params.set("mes", mes)
+    if (cr) params.set("cr", cr)
+    router.push(`?${params.toString()}`)
+  }
 
-  const porCrTop = (cr ? dados.porCr.filter((c) => c.cr === cr) : dados.porCr).slice(0, 12)
+  // dados já vêm filtrados pelo servidor.
+  const semPreenchimento = dados.semPreenchimento
+  const naoConformidades = dados.naoConformidades
+  const turnosSemSessao = dados.turnosSemSessao
+  const porCrTop = dados.porCr.slice(0, 12)
   const donut = [
     { nome: "Conforme", valor: dados.conformidade.conformes, cor: VERDE },
     { nome: "Não conforme", valor: dados.conformidade.naoConformes, cor: VERMELHO },
@@ -86,15 +93,15 @@ export function AcompanhamentoEpi({ dados }: { dados: AcompanhamentoMes }) {
           <input
             type="month"
             value={dados.mes}
-            onChange={(e) => e.target.value && router.push(`?mes=${e.target.value}`)}
+            onChange={(e) => e.target.value && navega(e.target.value, crFiltro)}
             className="h-10 rounded-xl border border-input bg-white/80 px-3 text-sm text-foreground focus:border-teal/50 focus:outline-none focus:ring-2 focus:ring-teal/20"
           />
         </div>
         <div className="min-w-[260px]">
           <label className="mb-1.5 block text-xs font-medium text-navy">CR</label>
           <Combobox
-            value={cr}
-            onChange={setCr}
+            value={crFiltro}
+            onChange={(v) => navega(dados.mes, v)}
             options={dados.crs.map((c) => ({ value: c, label: crCurto(c) }))}
             placeholder="Todos os CRs"
             allowClear

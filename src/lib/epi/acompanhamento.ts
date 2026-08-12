@@ -56,7 +56,10 @@ function diasDoMes(mes: string): string[] {
 
 type ItemResposta = { itemId?: string; rotulo?: string; conforme?: boolean }
 
-export async function acompanhamentoMensal(mes: string): Promise<AcompanhamentoMes> {
+export async function acompanhamentoMensal(
+  mes: string,
+  crFiltro?: string | null,
+): Promise<AcompanhamentoMes> {
   const hoje = hojeSaoPaulo().iso
   const dias = diasDoMes(mes).filter((d) => d <= hoje)
   const todosDias = diasDoMes(mes)
@@ -96,11 +99,17 @@ export async function acompanhamentoMensal(mes: string): Promise<AcompanhamentoM
     alocPorTurno.set(a.turnoId, arr)
   }
 
+  // Todos os CRs (para o seletor) e o subconjunto "em uso" (respeita o filtro de CR).
+  // Filtrar aqui faz TODOS os indicadores (KPIs, gráficos, listas) seguirem o CR.
+  const crsTodos = Array.from(new Set(turnos.map((t) => t.cr))).sort()
+  const turnosUso = crFiltro ? turnos.filter((t) => t.cr === crFiltro) : turnos
+  const lideresUso = crFiltro ? lideres.filter((l) => l.cr === crFiltro) : lideres
+  const crsUso = crFiltro ? [crFiltro] : crsTodos
+
   // nomes por cpfHash (quadro ativo do CR) — para quem não tem snapshot de resposta
-  const crs = Array.from(new Set(turnos.map((t) => t.cr)))
   const nomePorHash = new Map<string, string>()
   await Promise.all(
-    crs.map(async (cr) => {
+    crsUso.map(async (cr) => {
       try {
         const roster = await getQuadroAtivoPorCr(cr)
         for (const c of roster) if (!nomePorHash.has(c.cpfHash)) nomePorHash.set(c.cpfHash, c.nome)
@@ -136,7 +145,7 @@ export async function acompanhamentoMensal(mes: string): Promise<AcompanhamentoM
     porCrMap.set(cr, a)
   }
 
-  for (const t of turnos) {
+  for (const t of turnosUso) {
     const alocados = alocPorTurno.get(t.id) ?? []
     const diasEsperados = dias.filter((d) => t.diasSemana.includes(diaDaSemana(d)))
     const semSessao: string[] = []
@@ -196,7 +205,7 @@ export async function acompanhamentoMensal(mes: string): Promise<AcompanhamentoM
 
   // líderes: soma pendências dos CRs que lidera
   const lideresMap = new Map<string, { nome: string; authUserId: string; pendentes: number }>()
-  for (const l of lideres) {
+  for (const l of lideresUso) {
     const atual = lideresMap.get(l.authUserId) ?? { nome: l.nome, authUserId: l.authUserId, pendentes: 0 }
     atual.pendentes += pendentesPorCr.get(l.cr) ?? 0
     lideresMap.set(l.authUserId, atual)
@@ -238,7 +247,7 @@ export async function acompanhamentoMensal(mes: string): Promise<AcompanhamentoM
       validacoesPendentes,
       turnosSemSessao: turnosSemSessao.reduce((n, t) => n + t.dias.length, 0),
     },
-    crs: crs.sort(),
+    crs: crsTodos,
     porDia,
     porCr,
     conformidade,
