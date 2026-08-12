@@ -148,6 +148,15 @@ export async function registrarUtilizacao(
   const garantida = await garantirSessao(turno.id, turno.cr, dataNeg)
   if (!garantida) return { ok: false, erro: "O checklist deste CR ainda não foi publicado." }
 
+  // Uma vez registrado o turno no dia, NÃO pode preencher de novo (trava o dia).
+  const jaRegistrado = await prisma.validacaoSessao.findUnique({
+    where: { sessaoId: garantida.sessaoId },
+    select: { id: true },
+  })
+  if (jaRegistrado) {
+    return { ok: false, erro: "Este turno já foi registrado hoje — não é possível preencher de novo." }
+  }
+
   const roster = await getLideradosDoTurno(turno.id, turno.cr)
   const pessoaPorHash = new Map(roster.map((c) => [c.cpfHash, c]))
   const nomeEpi = new Map(garantida.itens.map((i) => [i.id, i.rotulo]))

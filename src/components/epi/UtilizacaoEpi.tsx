@@ -59,6 +59,8 @@ function Inner({ turnos, grade, dataIso, turnoId, hoje }: {
   const router = useRouter()
   const { sucesso, erro } = useToast()
   const [ocupado, setOcupado] = React.useState(false)
+  // Depois de registrar o turno no dia, a grade vira somente leitura (não preenche de novo).
+  const bloqueado = !!grade?.registrada
 
   const [estado, setEstado] = React.useState<Record<string, EstadoLinha>>(() =>
     Object.fromEntries((grade?.linhas ?? []).map((l) => [l.cpfHash, { ausente: l.ausente, respostas: { ...l.respostas } }])),
@@ -174,12 +176,17 @@ function Inner({ turnos, grade, dataIso, turnoId, hoje }: {
             <p className="text-sm text-muted-foreground">
               <strong className="text-navy">{crCurto(grade.cr)}</strong> · {grade.turnoNome} · {dataBR(grade.dataIso)} ·{" "}
               {grade.linhas.length} pessoa(s)
-              {grade.registrada && <span className="ml-2 rounded-full bg-emerald-500/12 px-2 py-0.5 text-xs font-medium text-emerald-700">registrado</span>}
             </p>
             <span className="flex-1" />
-            <Button type="button" variant="outline" size="sm" onClick={marcarTodosConformes}>
-              <CheckCircle2 className="h-4 w-4" /> Todos conformes
-            </Button>
+            {bloqueado ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/12 px-3 py-1 text-sm font-medium text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" /> Registrado neste dia — somente leitura
+              </span>
+            ) : (
+              <Button type="button" variant="outline" size="sm" onClick={marcarTodosConformes}>
+                <CheckCircle2 className="h-4 w-4" /> Todos conformes
+              </Button>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -197,9 +204,10 @@ function Inner({ turnos, grade, dataIso, turnoId, hoje }: {
                     </div>
                     <button
                       type="button"
+                      disabled={bloqueado}
                       onClick={() => setLinha(l.cpfHash, (cur) => ({ ...cur, ausente: !cur.ausente }))}
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-default",
                         e.ausente ? "bg-navy text-white" : "border border-navy/15 bg-white/70 text-muted-foreground hover:bg-navy/5",
                       )}
                     >
@@ -216,17 +224,19 @@ function Inner({ turnos, grade, dataIso, turnoId, hoje }: {
                             <span className="text-xs font-medium text-navy">{epi.nome}</span>
                             <button
                               type="button"
+                              disabled={bloqueado}
                               aria-label={`${epi.nome} conforme`}
                               onClick={() => setLinha(l.cpfHash, (cur) => ({ ...cur, respostas: { ...cur.respostas, [epi.id]: true } }))}
-                              className={cn("rounded-lg p-1 transition-colors", v === true ? "bg-emerald-500 text-white" : "text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600")}
+                              className={cn("rounded-lg p-1 transition-colors disabled:cursor-default", v === true ? "bg-emerald-500 text-white" : "text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600")}
                             >
                               <CheckCircle2 className="h-4 w-4" />
                             </button>
                             <button
                               type="button"
+                              disabled={bloqueado}
                               aria-label={`${epi.nome} não conforme`}
                               onClick={() => setLinha(l.cpfHash, (cur) => ({ ...cur, respostas: { ...cur.respostas, [epi.id]: false } }))}
-                              className={cn("rounded-lg p-1 transition-colors", v === false ? "bg-red-500 text-white" : "text-muted-foreground hover:bg-red-500/10 hover:text-red-600")}
+                              className={cn("rounded-lg p-1 transition-colors disabled:cursor-default", v === false ? "bg-red-500 text-white" : "text-muted-foreground hover:bg-red-500/10 hover:text-red-600")}
                             >
                               <XCircle className="h-4 w-4" />
                             </button>
@@ -240,11 +250,13 @@ function Inner({ turnos, grade, dataIso, turnoId, hoje }: {
             })}
           </div>
 
-          <div className="flex justify-end">
-            <Button type="button" variant="gradient" onClick={registrar} disabled={ocupado}>
-              <ClipboardCheck className="h-4 w-4" /> {ocupado ? "Registrando…" : grade.registrada ? "Atualizar registro" : "Registrar utilização"}
-            </Button>
-          </div>
+          {!bloqueado && (
+            <div className="flex justify-end">
+              <Button type="button" variant="gradient" onClick={registrar} disabled={ocupado}>
+                <ClipboardCheck className="h-4 w-4" /> {ocupado ? "Registrando…" : "Registrar utilização"}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>
