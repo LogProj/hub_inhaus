@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 
 import { Combobox } from "@/components/ui/Combobox"
+import { InfoIndicador } from "@/components/dashboard/InfoIndicador"
 import { tituloNome } from "@/lib/nomes"
 import { dataBR } from "@/lib/epi/datas"
 import { cn } from "@/lib/utils"
@@ -41,6 +42,108 @@ const VERMELHO = "#ef4444"
 
 function corAderencia(v: number): string {
   return v >= 90 ? VERDE : v >= 70 ? AMBAR : VERMELHO
+}
+
+// Info por indicador — SÓ regra de negócio, visual, com exemplo numérico (ver CLAUDE.md).
+// Tudo é apurado no mês escolhido, considerando os dias até hoje; quem o líder marca
+// AUSENTE não é cobrado naquele dia (resolve escalas 12x36).
+const INFO = {
+  aderencia: (
+    <>
+      <p>Mede o quanto do que era <b>esperado</b> foi realmente <b>preenchido</b> no mês.</p>
+      <ul className="list-disc space-y-1 pl-4">
+        <li><b>Esperado</b>: para cada turno, os dias do mês (até hoje) em que ele espera preenchimento, multiplicados pelas pessoas alocadas.</li>
+        <li><b>Preenchido</b>: pessoa alocada que teve os EPIs marcados pelo líder naquele dia.</li>
+        <li><b>Aderência</b> = preenchidos ÷ esperados.</li>
+        <li>Quem é marcado <b>ausente</b> não entra na conta daquele dia.</li>
+      </ul>
+      <p className="rounded-lg bg-teal-tint/60 px-3 py-2">
+        <b>Exemplo:</b> um turno de 10 pessoas, esperado em 20 dias = <b>200</b> esperados. Se foram feitos 180 preenchimentos, a aderência é <b>90%</b>.
+      </p>
+    </>
+  ),
+  semPreenchimento: (
+    <>
+      <p>Conta <b>colaboradores</b> que, num dia em que o turno estava aberto, <b>não tiveram os EPIs marcados</b> e <b>não foram apontados como ausentes</b>.</p>
+      <ul className="list-disc space-y-1 pl-4">
+        <li>É a falha que mais derruba a aderência.</li>
+        <li>Se a pessoa faltou de verdade, o líder deve marcá-la <b>ausente</b> — aí ela sai desta lista.</li>
+      </ul>
+      <p className="rounded-lg bg-teal-tint/60 px-3 py-2">
+        <b>Exemplo:</b> João está alocado no turno, o líder registrou o dia mas não marcou o João nem como presente nem ausente → João conta aqui.
+      </p>
+    </>
+  ),
+  naoConformidades: (
+    <>
+      <p>Conta as <b>ocorrências</b> em que um colaborador foi preenchido, mas <b>pelo menos um EPI ficou "não conforme"</b> (faltando ou irregular).</p>
+      <ul className="list-disc space-y-1 pl-4">
+        <li>É contado por <b>pessoa e dia</b>: se o mesmo colaborador tiver 2 EPIs não conformes no mesmo dia, conta como <b>1 ocorrência</b>.</li>
+      </ul>
+      <p className="rounded-lg bg-teal-tint/60 px-3 py-2">
+        <b>Exemplo:</b> Maria estava sem o capacete num dia e sem a luva em outro = <b>2 ocorrências</b>.
+      </p>
+    </>
+  ),
+  validacoesPendentes: (
+    <>
+      <p>Sessões que já foram <b>preenchidas</b> mas ainda estão <b>aguardando o líder fechar</b> (validar).</p>
+      <ul className="list-disc space-y-1 pl-4">
+        <li>Enquanto pendente, o registro daquele turno/dia não está concluído.</li>
+      </ul>
+      <p className="rounded-lg bg-teal-tint/60 px-3 py-2">
+        <b>Exemplo:</b> 3 turnos foram preenchidos hoje e nenhum foi fechado ainda → <b>3</b> pendentes.
+      </p>
+    </>
+  ),
+  turnosSemSessao: (
+    <>
+      <p>Conta os <b>dias</b> em que um turno <b>esperava preenchimento</b> e <b>ninguém registrou nada</b> — nem presença, nem EPIs.</p>
+      <ul className="list-disc space-y-1 pl-4">
+        <li>Diferente de "sem preenchimento" (que é por pessoa): aqui o dia inteiro do turno ficou em branco.</li>
+      </ul>
+      <p className="rounded-lg bg-teal-tint/60 px-3 py-2">
+        <b>Exemplo:</b> o turno esperava preenchimento em 22 dias e teve registro em 20 → <b>2</b> dias sem sessão.
+      </p>
+    </>
+  ),
+  porDia: (
+    <>
+      <p>Mostra a <b>aderência de cada dia</b> do mês, só nos dias em que havia expectativa de preenchimento.</p>
+      <ul className="list-disc space-y-1 pl-4">
+        <li>Cada ponto = preenchidos ÷ esperados <b>daquele dia</b>.</li>
+        <li>Serve para enxergar quedas (fins de semana, feriados, trocas de escala).</li>
+      </ul>
+    </>
+  ),
+  conformidade: (
+    <>
+      <p>De <b>tudo o que foi preenchido</b> no mês, quanto ficou <b>conforme</b> (todos os EPIs ok) e quanto teve <b>não conformidade</b>.</p>
+      <ul className="list-disc space-y-1 pl-4">
+        <li>A base é o total de preenchimentos, não o de pessoas.</li>
+      </ul>
+      <p className="rounded-lg bg-teal-tint/60 px-3 py-2">
+        <b>Exemplo:</b> 180 preenchimentos, 171 sem nenhum problema → <b>95% conforme</b>.
+      </p>
+    </>
+  ),
+  porCr: (
+    <>
+      <p>Compara a <b>aderência de cada CR</b>, do <b>pior para o melhor</b>, para priorizar quem precisa de atenção.</p>
+      <ul className="list-disc space-y-1 pl-4">
+        <li>A cor sinaliza o nível: <b className="text-emerald-600">verde ≥ 90%</b>, <b className="text-amber-600">âmbar 70–89%</b>, <b className="text-red-600">vermelho &lt; 70%</b>.</li>
+      </ul>
+    </>
+  ),
+  lideresPendentes: (
+    <>
+      <p>Soma, por <b>líder</b>, quantas <b>sessões preenchidas</b> ainda estão <b>aguardando ele fechar</b> (validar).</p>
+      <ul className="list-disc space-y-1 pl-4">
+        <li>Um líder pode responder por vários CRs — as pendências de todos eles se somam aqui.</li>
+        <li>Líderes sem nenhuma pendência aparecem como <b>em dia</b>.</li>
+      </ul>
+    </>
+  ),
 }
 
 function crCurto(cr: string): string {
@@ -142,7 +245,10 @@ export function AcompanhamentoEpi({ dados, crFiltro }: { dados: AcompanhamentoMe
             </div>
           </div>
           <div>
-            <p className="font-display text-lg font-semibold text-navy">Aderência do mês</p>
+            <div className="flex items-center gap-2">
+              <p className="font-display text-lg font-semibold text-navy">Aderência do mês</p>
+              <InfoIndicador titulo="Aderência do mês">{INFO.aderencia}</InfoIndicador>
+            </div>
             <p className="mt-1 text-sm text-muted-foreground">
               {dados.kpis.preenchidos} preenchimentos de <strong>{dados.kpis.esperados}</strong> esperados.
             </p>
@@ -150,16 +256,16 @@ export function AcompanhamentoEpi({ dados, crFiltro }: { dados: AcompanhamentoMe
         </div>
 
         <div className="grid grid-cols-2 gap-4 lg:col-span-2">
-          <StatTile icone={UserX} rotulo="Sem preenchimento" valor={dados.semPreenchimento.length} detalhe="colaboradores" cor={VERMELHO} />
-          <StatTile icone={AlertTriangle} rotulo="Não conformidades" valor={dados.kpis.naoConformidades} detalhe="ocorrências" cor={AMBAR} />
-          <StatTile icone={ClipboardCheck} rotulo="Validações pendentes" valor={dados.kpis.validacoesPendentes} detalhe="sessões" cor={AMBAR} />
-          <StatTile icone={CalendarX} rotulo="Turnos sem sessão" valor={dados.kpis.turnosSemSessao} detalhe="dias" cor={AMBAR} />
+          <StatTile icone={UserX} rotulo="Sem preenchimento" valor={dados.semPreenchimento.length} detalhe="colaboradores" cor={VERMELHO} info={INFO.semPreenchimento} />
+          <StatTile icone={AlertTriangle} rotulo="Não conformidades" valor={dados.kpis.naoConformidades} detalhe="ocorrências" cor={AMBAR} info={INFO.naoConformidades} />
+          <StatTile icone={ClipboardCheck} rotulo="Validações pendentes" valor={dados.kpis.validacoesPendentes} detalhe="sessões" cor={AMBAR} info={INFO.validacoesPendentes} />
+          <StatTile icone={CalendarX} rotulo="Turnos sem sessão" valor={dados.kpis.turnosSemSessao} detalhe="dias" cor={AMBAR} info={INFO.turnosSemSessao} />
         </div>
       </div>
 
       {/* gráficos: tendência + conformidade */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card titulo="Aderência ao longo do mês" className="lg:col-span-2">
+        <Card titulo="Aderência ao longo do mês" className="lg:col-span-2" info={INFO.porDia}>
           {dados.porDia.length === 0 ? (
             <Vazio texto="Sem dados de preenchimento no mês." />
           ) : (
@@ -195,7 +301,7 @@ export function AcompanhamentoEpi({ dados, crFiltro }: { dados: AcompanhamentoMe
           )}
         </Card>
 
-        <Card titulo="Conformidade dos preenchimentos">
+        <Card titulo="Conformidade dos preenchimentos" info={INFO.conformidade}>
           {totalDonut === 0 ? (
             <Vazio texto="Nenhum preenchimento no mês." />
           ) : (
@@ -238,7 +344,7 @@ export function AcompanhamentoEpi({ dados, crFiltro }: { dados: AcompanhamentoMe
 
       {/* aderência por CR + pendências por líder */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card titulo="Aderência por CR (pior primeiro)">
+        <Card titulo="Aderência por CR (pior primeiro)" info={INFO.porCr}>
           {porCrTop.length === 0 ? (
             <Vazio texto="Sem CRs com expectativa no mês." />
           ) : (
@@ -273,7 +379,7 @@ export function AcompanhamentoEpi({ dados, crFiltro }: { dados: AcompanhamentoMe
           )}
         </Card>
 
-        <Card titulo="Validações pendentes por líder">
+        <Card titulo="Validações pendentes por líder" info={INFO.lideresPendentes}>
           {dados.lideresPendentes.length === 0 ? (
             <div className="flex h-full flex-col justify-center gap-3">
               <Vazio texto="Nenhum líder com validações pendentes. 👍" tom="ok" />
@@ -346,11 +452,12 @@ export function AcompanhamentoEpi({ dados, crFiltro }: { dados: AcompanhamentoMe
   )
 }
 
-function StatTile({ icone: Icone, rotulo, valor, detalhe, cor }: { icone: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; rotulo: string; valor: number; detalhe: string; cor: string }) {
+function StatTile({ icone: Icone, rotulo, valor, detalhe, cor, info }: { icone: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; rotulo: string; valor: number; detalhe: string; cor: string; info?: React.ReactNode }) {
   return (
     <div className="glass rounded-3xl p-5">
       <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         <Icone className="h-4 w-4" style={{ color: cor }} /> {rotulo}
+        {info && <span className="ml-auto normal-case"><InfoIndicador titulo={rotulo}>{info}</InfoIndicador></span>}
       </div>
       <p className="mt-2 font-display text-3xl font-semibold" style={{ color: valor > 0 ? cor : NAVY }}>{valor}</p>
       <p className="mt-0.5 text-xs text-muted-foreground">{detalhe}</p>
@@ -358,10 +465,13 @@ function StatTile({ icone: Icone, rotulo, valor, detalhe, cor }: { icone: React.
   )
 }
 
-function Card({ titulo, children, className }: { titulo: string; children: React.ReactNode; className?: string }) {
+function Card({ titulo, children, className, info }: { titulo: string; children: React.ReactNode; className?: string; info?: React.ReactNode }) {
   return (
     <div className={cn("glass rounded-3xl p-6", className)}>
-      <p className="mb-4 font-display text-base font-semibold text-navy">{titulo}</p>
+      <div className="mb-4 flex items-center gap-2">
+        <p className="font-display text-base font-semibold text-navy">{titulo}</p>
+        {info && <InfoIndicador titulo={titulo}>{info}</InfoIndicador>}
+      </div>
       {children}
     </div>
   )
