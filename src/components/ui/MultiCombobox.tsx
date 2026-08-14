@@ -156,6 +156,7 @@ export function MultiCombobox({
         createPortal(
           <div
             ref={painelRef}
+            data-portal-dropdown=""
             style={{
               position: "fixed",
               left: pos.left,

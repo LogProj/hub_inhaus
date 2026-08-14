@@ -61,7 +61,11 @@ export function FiltrosQuadro({ opcoes, atual }: Props) {
   useEffect(() => {
     if (!aberto) return
     const fora = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false)
+      const alvo = e.target as HTMLElement
+      // Os dropdowns (MultiCombobox/Combobox) abrem num PORTAL fora do painel:
+      // um clique numa opção NÃO deve fechar o painel de filtros.
+      if (alvo.closest("[data-portal-dropdown]")) return
+      if (ref.current && !ref.current.contains(alvo)) setAberto(false)
     }
     const esc = (e: KeyboardEvent) => {
       if (e.key === "Escape") setAberto(false)
