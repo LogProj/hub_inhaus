@@ -16,6 +16,9 @@ import { inhausPool } from "@/lib/db-inhaus"
  *  - Linha do tempo: quadro ativo em cada data de referência (fotografia real).
  *  - Quadro médio por mês: média das fotografias do mês.
  *  - Desligamentos no mês: por data de demissão, cada pessoa uma vez.
+ *  - Turnover (rotatividade) do mês: desligamentos do mês ÷ quadro médio do mês,
+ *    em %. Quadro médio = média das fotografias do mês (sem histórico, usa o total
+ *    atual). Ex.: 18 desligamentos sobre um quadro médio de 1.800 = 1,0%.
  */
 
 export const GERENTE_REGIONAL_FIXO = "Lucas Rodrigues da Silva"
@@ -44,6 +47,10 @@ export type ControleQuadro = {
   dataReferencia: string | null
   totalQuadro: number
   desligamentosMes: number
+  /** Quadro médio (média das fotografias) do(s) mês(es) de referência. Base do turnover. */
+  quadroMedioMes: number
+  /** Rotatividade do mês, em %: desligamentos ÷ quadro médio do mês. */
+  turnoverMes: number
   porSituacao: Fatia[]
   porCr: Fatia[]
   porCargo: Fatia[]
@@ -131,6 +138,8 @@ export async function getControleQuadro(filtros: FiltrosQuadro): Promise<Control
     dataReferencia,
     totalQuadro: 0,
     desligamentosMes: 0,
+    quadroMedioMes: 0,
+    turnoverMes: 0,
     porSituacao: [],
     porCr: [],
     porCargo: [],
@@ -202,10 +211,24 @@ export async function getControleQuadro(filtros: FiltrosQuadro): Promise<Control
     ),
   ])
 
+  const desligamentosMes = paraNumero(deslig.rows[0]?.q)
+  const totalQuadro = paraNumero(total.rows[0]?.q)
+  // Quadro médio dos meses de referência: média das fotografias desses meses.
+  // Sem histórico de fotografias, cai para o total da fotografia atual.
+  const mediasRef = mensal.rows
+    .filter((r) => mesesDeslig.includes(r.dia as string))
+    .map((r) => paraNumero(r.q))
+  const quadroMedioMes = mediasRef.length
+    ? Math.round(mediasRef.reduce((s, n) => s + n, 0) / mediasRef.length)
+    : totalQuadro
+  const turnoverMes = quadroMedioMes > 0 ? Math.round((desligamentosMes / quadroMedioMes) * 1000) / 10 : 0
+
   return {
     ...base,
-    totalQuadro: paraNumero(total.rows[0]?.q),
-    desligamentosMes: paraNumero(deslig.rows[0]?.q),
+    totalQuadro,
+    desligamentosMes,
+    quadroMedioMes,
+    turnoverMes,
     porSituacao: situacao.rows
       .map((r) => ({ rotulo: (r.situacao as string) ?? "—", total: paraNumero(r.q) }))
       .sort((a, b) => (ORDEM_SITUACAO[a.rotulo] ?? 99) - (ORDEM_SITUACAO[b.rotulo] ?? 99)),

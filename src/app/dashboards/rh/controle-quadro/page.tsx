@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import {
-  Users, UserCheck, Plane, HeartPulse, UserMinus, LineChart, Building2, Briefcase,
+  Users, UserCheck, Plane, HeartPulse, UserMinus, LineChart, Building2, Briefcase, Repeat,
 } from "lucide-react"
 
 import { InfoIndicador } from "@/components/dashboard/InfoIndicador"
@@ -115,6 +115,11 @@ export default async function ControleQuadroPage({
                 contadas uma única vez.
               </li>
               <li>
+                <b>Turnover no mês (rotatividade):</b> desligamentos do mês divididos pelo{" "}
+                <b>quadro médio do mês</b>, em porcentagem. Ex.: 18 desligamentos sobre um
+                quadro médio de 1.800 pessoas = <b>1,0%</b>.
+              </li>
+              <li>
                 Você pode <b>desmarcar cargos</b> para tirá-los da conta. Todas as situações
                 (atividade, férias, afastados) contam no total.
               </li>
@@ -144,8 +149,8 @@ export default async function ControleQuadroPage({
         </div>
       ) : (
         <>
-          {/* Cards principais — lado a lado, ocupando a largura toda */}
-          <section className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-5">
+          {/* Cards principais — lado a lado, todos na mesma linha */}
+          <section className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-6">
             <div className="glass reveal relative overflow-hidden rounded-3xl p-6">
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-tint text-teal">
                 <Users className="h-5 w-5" />
@@ -163,6 +168,33 @@ export default async function ControleQuadroPage({
               </p>
             </div>
 
+            {/* Só as situações do quadro ativo (atividade/férias/afastados);
+                DEMITIDO e TRANSFERIDO não viram card. */}
+            {dados.porSituacao
+              .filter((s) => s.rotulo in LABEL_SITUACAO)
+              .map((s, i) => {
+                const rotulo = LABEL_SITUACAO[s.rotulo] ?? s.rotulo
+                const Icone = ICONE_SITUACAO[rotulo] ?? UserCheck
+                return (
+                  <div
+                    key={s.rotulo}
+                    className="glass reveal relative overflow-hidden rounded-3xl p-6"
+                    style={{ animationDelay: `${(i + 1) * 0.05}s` }}
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-tint text-teal">
+                      <Icone className="h-5 w-5" />
+                    </span>
+                    <p className="mt-4 text-sm font-medium text-muted-foreground">{rotulo}</p>
+                    <p className="mt-1 font-display text-3xl font-semibold tracking-tight text-foreground">
+                      {nf(s.total)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {pct(s.total, dados!.totalQuadro)} do quadro
+                    </p>
+                  </div>
+                )
+              })}
+
             <div className="glass reveal relative overflow-hidden rounded-3xl p-6">
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-tint text-teal">
                 <UserMinus className="h-5 w-5" />
@@ -176,28 +208,18 @@ export default async function ControleQuadroPage({
               </p>
             </div>
 
-            {dados.porSituacao.map((s, i) => {
-              const rotulo = LABEL_SITUACAO[s.rotulo] ?? s.rotulo
-              const Icone = ICONE_SITUACAO[rotulo] ?? UserCheck
-              return (
-                <div
-                  key={s.rotulo}
-                  className="glass reveal relative overflow-hidden rounded-3xl p-6"
-                  style={{ animationDelay: `${(i + 2) * 0.05}s` }}
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-tint text-teal">
-                    <Icone className="h-5 w-5" />
-                  </span>
-                  <p className="mt-4 text-sm font-medium text-muted-foreground">{rotulo}</p>
-                  <p className="mt-1 font-display text-3xl font-semibold tracking-tight text-foreground">
-                    {nf(s.total)}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {pct(s.total, dados!.totalQuadro)} do quadro
-                  </p>
-                </div>
-              )
-            })}
+            <div className="glass reveal relative overflow-hidden rounded-3xl p-6">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-tint text-teal">
+                <Repeat className="h-5 w-5" />
+              </span>
+              <p className="mt-4 text-sm font-medium text-muted-foreground">Turnover no mês</p>
+              <p className="mt-1 font-display text-3xl font-semibold tracking-tight text-foreground">
+                {dados.turnoverMes.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                sobre {nf(dados.quadroMedioMes)} em média
+              </p>
+            </div>
           </section>
 
           {/* Linha do tempo — por data de referência */}
