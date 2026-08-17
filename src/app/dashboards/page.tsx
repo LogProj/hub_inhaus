@@ -1,11 +1,14 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { ArrowUpRight, Sparkles } from "lucide-react"
 
 import { TiltCard } from "@/components/TiltCard"
 import { DOMINIOS } from "@/lib/domains"
+import { resolverPapeisDashboard } from "@/lib/dashboard-acesso"
 
 export const metadata: Metadata = { title: "Visão geral" }
+export const dynamic = "force-dynamic"
 
 /** Valor de destaque fictício por domínio — nenhum dado real é consultado aqui. */
 const VALOR_PLACEHOLDER: Record<string, { valor: string; legenda: string }> = {
@@ -16,7 +19,12 @@ const VALOR_PLACEHOLDER: Record<string, { valor: string; legenda: string }> = {
   financeiro: { valor: "—", legenda: "custo de pessoal em breve" },
 }
 
-export default function DashboardsHome() {
+export default async function DashboardsHome() {
+  // Líder puro (só preenche) cai direto na lista de checklists — a visão geral
+  // com KPIs é para admin/Segurança.
+  const papeis = await resolverPapeisDashboard()
+  if (papeis.soPreenche) redirect("/dashboards/checklists")
+
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       {/* Cabeçalho */}

@@ -19,9 +19,11 @@ type DashboardShellProps = {
   epiConfig?: boolean
   /** Pode validar EPI (admin/Segurança/líder) — mostra Validações. */
   epiValida?: boolean
+  /** Líder puro (só preenche): no MOBILE não vê a sidebar — fluxo enxuto tipo app. */
+  soPreenche?: boolean
 }
 
-export function DashboardShell({ children, nome, email, isAdmin, epiConfig = false, epiValida = false }: DashboardShellProps) {
+export function DashboardShell({ children, nome, email, isAdmin, epiConfig = false, epiValida = false, soPreenche = false }: DashboardShellProps) {
   const router = useRouter()
   const [drawer, setDrawer] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -59,10 +61,11 @@ export function DashboardShell({ children, nome, email, isAdmin, epiConfig = fal
         />
       </aside>
 
-      {/* Drawer (mobile) */}
+      {/* Drawer (mobile) — o líder puro (soPreenche) NÃO tem sidebar no celular. */}
       <div
         className={cn(
           "fixed inset-0 z-50 lg:hidden",
+          soPreenche && "hidden",
           drawer ? "pointer-events-auto" : "pointer-events-none",
         )}
       >
@@ -97,12 +100,18 @@ export function DashboardShell({ children, nome, email, isAdmin, epiConfig = fal
         {/* Topbar — vidro claro, contínua com o canvas. */}
         <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-navy/10 bg-white/70 px-4 backdrop-blur-xl sm:px-6">
           <button
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-navy hover:bg-teal-tint lg:hidden"
+            className={cn(
+              "inline-flex h-10 w-10 items-center justify-center rounded-xl text-navy hover:bg-teal-tint lg:hidden",
+              soPreenche && "hidden",
+            )}
             onClick={() => setDrawer((v) => !v)}
             aria-label={drawer ? "Fechar menu" : "Abrir menu"}
           >
             {drawer ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
+
+          {/* Sem hambúrguer no mobile (líder puro): a logo ocupa a topbar. */}
+          {soPreenche && <InhausLogo className="h-6 sm:hidden" />}
 
           <div className="relative hidden max-w-md flex-1 sm:block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

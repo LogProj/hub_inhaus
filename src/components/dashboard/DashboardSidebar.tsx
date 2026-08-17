@@ -109,8 +109,19 @@ export function DashboardSidebar({
 }) {
   const pathname = usePathname()
   const grupoEpiAtual = grupoEpi(epiConfig, epiValida)
+  // Quem pode preencher (líder/Segurança/admin) tem "Checklists" logo no topo —
+  // é a porta de entrada do preenchimento.
+  const grupoGeral: NavGroup = {
+    ...GRUPO_GERAL,
+    items: [
+      ...GRUPO_GERAL.items,
+      ...(epiValida
+        ? [{ href: "/dashboards/checklists", label: "Checklists", icon: ClipboardCheck }]
+        : []),
+    ],
+  }
   const grupos = [
-    GRUPO_GERAL,
+    grupoGeral,
     ...GRUPOS_DOMINIO,
     ...(grupoEpiAtual ? [grupoEpiAtual] : []),
     ...(isAdmin ? [GRUPO_ADMIN] : []),

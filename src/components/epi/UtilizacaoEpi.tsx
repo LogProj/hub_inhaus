@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { UserRound, CheckCircle2, XCircle, UserX, ClipboardCheck } from "lucide-react"
+import { UserRound, CheckCircle2, XCircle, UserX, ClipboardCheck, ArrowLeft } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Combobox } from "@/components/ui/Combobox"
@@ -135,10 +136,18 @@ function Inner({ turnos, grade, dataIso, turnoId, hoje }: {
   }
 
   return (
-    <div className="space-y-6">
-      {/* seletores */}
-      <div className="glass flex flex-wrap items-end gap-4 rounded-3xl p-5">
-        <div className="min-w-[280px]">
+    <div className="space-y-6 pb-2">
+      {/* Voltar para a lista de checklists (útil no mobile, sem sidebar). */}
+      <Link
+        href="/dashboards/checklists"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-teal"
+      >
+        <ArrowLeft className="h-4 w-4" /> Checklists
+      </Link>
+
+      {/* seletores — empilham no mobile, lado a lado a partir de sm */}
+      <div className="glass flex flex-col gap-4 rounded-3xl p-5 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="w-full sm:w-auto sm:min-w-[280px]">
           <label className="mb-1.5 block text-xs font-medium text-navy">Turno</label>
           <Combobox
             value={turnoId ? String(turnoId) : null}
@@ -148,14 +157,14 @@ function Inner({ turnos, grade, dataIso, turnoId, hoje }: {
             ariaLabel="Turno"
           />
         </div>
-        <div>
+        <div className="w-full sm:w-auto">
           <label className="mb-1.5 block text-xs font-medium text-navy">Dia</label>
           <input
             type="date"
             value={dataIso}
             max={hoje}
             onChange={(e) => e.target.value && irPara(turnoId, e.target.value)}
-            className="h-10 rounded-xl border border-input bg-white/80 px-3 text-sm text-foreground focus:border-teal/50 focus:outline-none focus:ring-2 focus:ring-teal/20"
+            className="h-11 w-full rounded-xl border border-input bg-white/80 px-3 text-sm text-foreground focus:border-teal/50 focus:outline-none focus:ring-2 focus:ring-teal/20 sm:h-10 sm:w-auto"
           />
         </div>
       </div>
@@ -207,39 +216,52 @@ function Inner({ turnos, grade, dataIso, turnoId, hoje }: {
                       disabled={bloqueado}
                       onClick={() => setLinha(l.cpfHash, (cur) => ({ ...cur, ausente: !cur.ausente }))}
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-default",
+                        "inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors disabled:cursor-default sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
                         e.ausente ? "bg-navy text-white" : "border border-navy/15 bg-white/70 text-muted-foreground hover:bg-navy/5",
                       )}
                     >
-                      <UserX className="h-3.5 w-3.5" /> Ausente
+                      <UserX className="h-4 w-4 sm:h-3.5 sm:w-3.5" /> Ausente
                     </button>
                   </div>
 
                   {!e.ausente && (
-                    <div className="mt-3 flex flex-wrap gap-2 border-t border-navy/5 pt-3">
+                    <div className="mt-3 flex flex-col gap-2 border-t border-navy/5 pt-3 sm:flex-row sm:flex-wrap">
                       {grade.epis.map((epi) => {
                         const v = e.respostas[epi.id]
                         return (
-                          <div key={epi.id} className="flex items-center gap-1.5 rounded-2xl border border-border/60 bg-white/60 px-2.5 py-1.5">
-                            <span className="text-xs font-medium text-navy">{epi.nome}</span>
-                            <button
-                              type="button"
-                              disabled={bloqueado}
-                              aria-label={`${epi.nome} conforme`}
-                              onClick={() => setLinha(l.cpfHash, (cur) => ({ ...cur, respostas: { ...cur.respostas, [epi.id]: true } }))}
-                              className={cn("rounded-lg p-1 transition-colors disabled:cursor-default", v === true ? "bg-emerald-500 text-white" : "text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600")}
-                            >
-                              <CheckCircle2 className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={bloqueado}
-                              aria-label={`${epi.nome} não conforme`}
-                              onClick={() => setLinha(l.cpfHash, (cur) => ({ ...cur, respostas: { ...cur.respostas, [epi.id]: false } }))}
-                              className={cn("rounded-lg p-1 transition-colors disabled:cursor-default", v === false ? "bg-red-500 text-white" : "text-muted-foreground hover:bg-red-500/10 hover:text-red-600")}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </button>
+                          <div
+                            key={epi.id}
+                            className="flex w-full items-center justify-between gap-2 rounded-2xl border border-border/60 bg-white/60 px-3 py-2 sm:w-auto sm:justify-start sm:px-2.5 sm:py-1.5"
+                          >
+                            <span className="text-sm font-medium text-navy sm:text-xs">{epi.nome}</span>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <button
+                                type="button"
+                                disabled={bloqueado}
+                                aria-label={`${epi.nome} conforme`}
+                                aria-pressed={v === true}
+                                onClick={() => setLinha(l.cpfHash, (cur) => ({ ...cur, respostas: { ...cur.respostas, [epi.id]: true } }))}
+                                className={cn(
+                                  "inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors disabled:cursor-default sm:h-8 sm:w-8 sm:rounded-lg",
+                                  v === true ? "bg-emerald-500 text-white" : "text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600",
+                                )}
+                              >
+                                <CheckCircle2 className="h-5 w-5 sm:h-4 sm:w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={bloqueado}
+                                aria-label={`${epi.nome} não conforme`}
+                                aria-pressed={v === false}
+                                onClick={() => setLinha(l.cpfHash, (cur) => ({ ...cur, respostas: { ...cur.respostas, [epi.id]: false } }))}
+                                className={cn(
+                                  "inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors disabled:cursor-default sm:h-8 sm:w-8 sm:rounded-lg",
+                                  v === false ? "bg-red-500 text-white" : "text-muted-foreground hover:bg-red-500/10 hover:text-red-600",
+                                )}
+                              >
+                                <XCircle className="h-5 w-5 sm:h-4 sm:w-4" />
+                              </button>
+                            </div>
                           </div>
                         )
                       })}
@@ -250,13 +272,34 @@ function Inner({ turnos, grade, dataIso, turnoId, hoje }: {
             })}
           </div>
 
-          {!bloqueado && (
-            <div className="flex justify-end">
-              <Button type="button" variant="gradient" onClick={registrar} disabled={ocupado}>
-                <ClipboardCheck className="h-4 w-4" /> {ocupado ? "Registrando…" : "Registrar utilização"}
-              </Button>
-            </div>
-          )}
+          {!bloqueado &&
+            (() => {
+              const total = grade.linhas.length
+              const prontos = grade.linhas.filter((l) => {
+                const st = estado[l.cpfHash]
+                if (!st) return false
+                if (st.ausente) return true
+                return grade.epis.every((epi) => !epi.obrigatorio || st.respostas[epi.id] !== undefined)
+              }).length
+              return (
+                <div className="sticky bottom-0 z-20 -mx-4 mt-2 border-t border-navy/10 bg-white/85 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-muted-foreground sm:hidden">
+                      <span className="font-semibold text-navy">{prontos}</span> de {total} prontos
+                    </p>
+                    <Button
+                      type="button"
+                      variant="gradient"
+                      onClick={registrar}
+                      disabled={ocupado}
+                      className="w-full sm:ml-auto sm:w-auto"
+                    >
+                      <ClipboardCheck className="h-4 w-4" /> {ocupado ? "Registrando…" : "Registrar utilização"}
+                    </Button>
+                  </div>
+                </div>
+              )
+            })()}
         </>
       )}
     </div>
