@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { codigoCr } from "./escopo-dados"
 import { predicadoSraCr, EXPR_CODIGO_CR_SRA, type EscopoDados } from "./escopo-dados"
+import { assertLinhasNoEscopo } from "./escopo-dados"
 
 describe("codigoCr", () => {
   it("extrai o código antes do ' - ' e mantém 5 chars", () => {
@@ -40,5 +41,29 @@ describe("predicadoSraCr", () => {
     const p = predicadoSraCr({ tipo: "lista", crs: [] }, "cr", 5)
     expect(p.sql).toBe(" and 1=0")
     expect(p.params).toEqual([])
+  })
+})
+
+describe("assertLinhasNoEscopo", () => {
+  const rows = [{ cr: "12345 - A" }, { cr: "01489 - B" }]
+  it("não lança quando todas as linhas estão no escopo", () => {
+    expect(() =>
+      assertLinhasNoEscopo(rows, (r) => r.cr, { tipo: "lista", crs: ["12345", "01489"] }),
+    ).not.toThrow()
+  })
+  it("LANÇA quando aparece uma linha de CR fora do escopo", () => {
+    expect(() =>
+      assertLinhasNoEscopo(rows, (r) => r.cr, { tipo: "lista", crs: ["12345"] }),
+    ).toThrow(/fora do escopo/i)
+  })
+  it("escopo 'todos' nunca lança", () => {
+    expect(() =>
+      assertLinhasNoEscopo(rows, (r) => r.cr, { tipo: "todos" }),
+    ).not.toThrow()
+  })
+  it("ignora linhas cujo CR é nulo (agregados sem CR)", () => {
+    expect(() =>
+      assertLinhasNoEscopo([{ cr: null }], (r) => r.cr, { tipo: "lista", crs: ["12345"] }),
+    ).not.toThrow()
   })
 })

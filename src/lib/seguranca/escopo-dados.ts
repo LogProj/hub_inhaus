@@ -53,3 +53,26 @@ export function predicadoSraCr(
     params: [escopo.crs],
   }
 }
+
+/**
+ * TRAVA 2 (independente da Trava 1): confere que TODA linha retornada tem código de
+ * CR dentro do escopo. Se alguma escapar, LANÇA. Linhas com CR nulo são ignoradas
+ * (agregados sem recorte de CR). Escopo `todos` não verifica nada.
+ */
+export function assertLinhasNoEscopo<T>(
+  linhas: readonly T[],
+  getCr: (linha: T) => string | null | undefined,
+  escopo: EscopoDados,
+): void {
+  if (escopo.tipo === "todos") return
+  const permitidos = new Set(escopo.crs)
+  for (const linha of linhas) {
+    const cod = codigoCr(getCr(linha))
+    if (cod == null) continue
+    if (!permitidos.has(cod)) {
+      throw new Error(
+        `Bloqueio de segurança: linha com CR fora do escopo do usuário (${cod}).`,
+      )
+    }
+  }
+}
