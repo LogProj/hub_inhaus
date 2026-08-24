@@ -32,7 +32,10 @@ Controle de Quadro (RH real, lido da SRA) não filtra nada por usuário. Precisa
 - Modelo de escopo **híbrido**: vínculo por **cliente** (herda todos os CRs, inclusive
   futuros) **e/ou** por **CR avulso**.
 - Coluna de CR **só nas tabelas de dados** (não em biblioteca de checklist nem `dm_cr`).
-- Enforcement em **duas camadas**: guarda na aplicação **+** RLS no Postgres.
+- Enforcement em **duas travas independentes na aplicação** (guarda de escopo +
+  verificação pós-consulta). **Sem trocar connection strings** (decisão do cliente): como o
+  hub conecta como `postgres` (superusuário ignora RLS), a RLS fica **dormente** no SQL —
+  pronta para ativar se um dia houver role não-superusuário, mas não é a trava de hoje.
 - Existe classificação **`CLIENTE`|`INTERNO`** (campo local), sem impactar permissões.
 - Chave de isolamento = **`cr_cod`** (código 5-char que casa com `dm_cr.cr`), não o texto
   bruto do CR.
@@ -96,34 +99,32 @@ se tiver menos de 5 chars (mesma regra já usada em `listarCrsDisponiveis`).
 
 ---
 
-## 3. Enforcement — defesa em profundidade
+## 3. Enforcement — defesa em profundidade (toda na aplicação)
 
-### Camada A — Guarda na aplicação (`src/lib/seguranca/escopo-dados.ts`)
-- Server-only. Toda função de dados (quadro, EPI, indicadores futuros) resolve o escopo e
-  injeta o predicado: `cr_cod = ANY($crs)`; se `crs` vazio ⇒ `1=0` (nada).
-- Para as consultas da SRA (pool `db-inhaus`), a mesma guarda injeta o predicado sobre o
-  **código derivado** do `cr` bruto.
-- Padrão único e revisável; nenhuma query de dados roda sem passar por ela.
+**Restrição do cliente:** NÃO trocar connection strings. O hub conecta como `postgres`
+(superusuário), que **ignora RLS sempre** — logo RLS não pode ser a trava efetiva hoje. A
+defesa em profundidade vive em **duas travas independentes na aplicação**, mais o SQL de
+RLS deixado **dormente** para o dia em que houver role não-superusuário.
 
-### Camada B — RLS no Postgres (rede de segurança)
-- `ENABLE ROW LEVEL SECURITY` **e** `FORCE ROW LEVEL SECURITY` nas tabelas de dados do hub
-  e na base de leitura da SRA usada pelo hub.
-- Policy compara `cr_cod` (ou código derivado) com a variável de sessão
-  `app.crs_permitidos` (lista de códigos). Bypass explícito para admin/interno via
-  `app.bypass_rls = 'on'`.
-- **A GUC é setada por transação** (`SET LOCAL`), no mesmo escopo transacional da query —
-  contorna o pooling do Prisma/pg:
-  - Prisma: `$transaction` com `SET LOCAL app.crs_permitidos = '...'` antes das queries
-    (extension/middleware que embrulha as leituras de dados).
-  - Pool `db-inhaus`: `client.query('SET LOCAL ...')` dentro de um `BEGIN/COMMIT` que
-    envolve a consulta.
-- A **RPA conecta com o role dono** (owner), que ignora RLS mesmo com FORCE quando é o
-  dono da tabela — a escrita da RPA não é afetada. (Validar o role real da RPA no plano;
-  se não for owner, criar policy permissiva específica para o role da RPA.)
+### Trava 1 — Guarda de escopo obrigatória (`src/lib/seguranca/escopo-dados.ts`)
+- Server-only. Único gateway por onde TODO acesso a dado passa (pool da SRA e Prisma).
+- Resolve o escopo e injeta o predicado `cr_cod = ANY($crs)` (SRA: código derivado do `cr`
+  bruto). Escopo `todos` (admin interno) ⇒ sem predicado. Lista vazia ⇒ `1=0` (nada).
+- Nenhuma query de dado é escrita sem passar por aqui. Padrão único e revisável.
 
-> Ponto de atenção registrado para o plano: confirmar o role de conexão do Prisma e o da
-> RPA; garantir que o role do hub **não** seja owner/superuser das tabelas da SRA (senão
-> FORCE não o alcança) — se for, usar um role dedicado de leitura para o hub.
+### Trava 2 — Verificação pós-consulta independente (mesmo módulo)
+- Depois de buscar, `assertLinhasNoEscopo(rows, escopo)` confere que **toda** linha
+  retornada tem `cr_cod` (ou código derivado) dentro do escopo. Se aparecer linha fora do
+  escopo (ex.: filtro esquecido em alguma query) ⇒ **lança erro e não retorna nada**.
+- Independe da Trava 1: é a rede que garante o "em hipótese alguma" mesmo com bug de query.
+- Só roda quando o escopo é `lista` (usuário recortado); admin `todos` a ignora.
+
+### Camada dormente — RLS no Postgres (não protege hoje; pronta para o futuro)
+- O `008_isolamento_cr.sql` inclui as policies (`ENABLE`/`FORCE ROW LEVEL SECURITY`,
+  compara `cr_cod` com `app.crs_permitidos`) **comentadas/dormentes**, com um cabeçalho
+  explicando que só passam a valer se o hub conectar com um role não-superusuário. Assim o
+  trabalho não é perdido, mas o spec não finge que RLS protege enquanto a conexão for
+  `postgres`.
 
 ---
 
@@ -141,24 +142,23 @@ se tiver menos de 5 chars (mesma regra já usada em `listarCrsDisponiveis`).
 
 ## 5. Rollout / verificação
 
-1. `008_isolamento_cr.sql`: colunas, tabelas de vínculo, backfill de `cr_cod`, policies
-   (inicialmente `ENABLE` sem `FORCE`, validar, depois `FORCE`).
-2. Guarda na aplicação aplicada primeiro no **Controle de Quadro** e no **EPI** (dados
-   existentes hoje).
-3. Verificação direta no banco:
+1. `008_isolamento_cr.sql`: colunas (`classificacao`, `cr_cod`), tabelas de vínculo,
+   backfill de `cr_cod`, policies RLS **dormentes** (comentadas com cabeçalho explicativo).
+2. Guarda de escopo + verificação pós-consulta aplicadas primeiro no **Controle de Quadro**
+   e no **EPI** (dados existentes hoje).
+3. Verificação (testes automatizados + conferência):
    - usuário-cliente retorna **apenas** linhas do(s) seu(s) CR(s) — no quadro e no EPI;
    - usuário interno/admin retorna tudo;
-   - a **RPA continua escrevendo** normalmente (teste de insert com o role da RPA);
+   - a verificação pós-consulta **lança** se uma query for injetada sem o filtro;
    - fail-closed: usuário sem vínculo não retorna nenhuma linha.
 4. `npx tsc --noEmit`, `npm run build`.
 
 ## Riscos / mitigações
 
-- **GUC + pooling**: risco de query rodar fora da transação com a GUC → mitigado
-  centralizando toda leitura de dado no wrapper transacional; RLS é backstop caso a guarda
-  falhe.
-- **Role owner ignora FORCE**: mitigado validando/segregando o role de leitura do hub.
-- **View da SRA e RLS**: se `vw_sra_geral` não aceitar policy, aplicar na tabela base.
+- **RLS inerte sob superusuário**: reconhecido; a trava efetiva é a aplicação (2 travas
+  independentes). RLS fica dormente e documentada para ativação futura com role dedicado.
+- **Query esquecida sem filtro**: mitigada pela Trava 2 (verificação pós-consulta que
+  lança), independente da Trava 1.
 - **Backfill de `cr_cod`**: CRs sem match na `dm_cr` ficam com `cr_cod` nulo → tratados
   como "não pertencem a nenhum cliente" (só admin/interno vê) — sinalizado no plano.
 
