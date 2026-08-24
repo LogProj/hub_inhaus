@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 
 import { getSessionReadOnly } from "@/lib/auth-session"
 import { acessoLivreLiberado, USUARIO_DEV } from "@/lib/dev-auth"
+import { CHAVES_DE_TELA } from "@/lib/domains"
 import { resolverAcessoEpi, podeConfigurar } from "@/lib/epi/papeis"
 import { escopoDoUsuario, podeVerValidacoes } from "@/lib/epi/escopo"
 
@@ -23,6 +24,8 @@ export type PapeisDashboard = {
   epiConfig: boolean
   epiValida: boolean
   soPreenche: boolean
+  /** Telas concedidas ao usuário (chaves de domains.ts). Admin/dev = todas. */
+  visibleScreens: string[]
 }
 
 export async function resolverPapeisDashboard(next = "/dashboards"): Promise<PapeisDashboard> {
@@ -35,6 +38,7 @@ export async function resolverPapeisDashboard(next = "/dashboards"): Promise<Pap
       epiConfig: true,
       epiValida: true,
       soPreenche: false,
+      visibleScreens: CHAVES_DE_TELA,
     }
   }
 
@@ -62,5 +66,17 @@ export async function resolverPapeisDashboard(next = "/dashboards"): Promise<Pap
     epiConfig,
     epiValida,
     soPreenche: epiValida && !epiConfig && !isAdmin,
+    visibleScreens: sessao.authorization.visibleScreens,
   }
+}
+
+/**
+ * Guard de ROTA por tela (Eixo 1). Chame no topo de um page.tsx protegido com a
+ * `key` da tela (domains.ts). Admin/dev passam sempre. Sem a tela concedida →
+ * redireciona para a Home.
+ */
+export async function assertTelaVisivel(telaKey: string): Promise<void> {
+  const papeis = await resolverPapeisDashboard()
+  if (papeis.isAdmin) return
+  if (!papeis.visibleScreens.includes(telaKey)) redirect("/dashboards")
 }
