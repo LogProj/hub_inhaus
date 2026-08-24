@@ -1,7 +1,17 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { codigoCr } from "./escopo-dados"
 import { predicadoSraCr, EXPR_CODIGO_CR_SRA, type EscopoDados } from "./escopo-dados"
 import { assertLinhasNoEscopo } from "./escopo-dados"
+import { resolverEscopoDados } from "./escopo-dados"
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    authUserCliente: { findMany: vi.fn() },
+    authUserCr: { findMany: vi.fn() },
+    $queryRaw: vi.fn(),
+  },
+}))
+import { prisma } from "@/lib/prisma"
 
 describe("codigoCr", () => {
   it("extrai o código antes do ' - ' e mantém 5 chars", () => {
@@ -65,5 +75,33 @@ describe("assertLinhasNoEscopo", () => {
     expect(() =>
       assertLinhasNoEscopo([{ cr: null }], (r) => r.cr, { tipo: "lista", crs: ["12345"] }),
     ).not.toThrow()
+  })
+})
+
+describe("resolverEscopoDados", () => {
+  it("admin INTERNO vê tudo", async () => {
+    const e = await resolverEscopoDados({ authUserId: "u1", isAdmin: true, classificacao: "INTERNO" })
+    expect(e).toEqual({ tipo: "todos" })
+  })
+  it("admin CLIENTE NUNCA vê tudo — cai para o escopo por vínculo", async () => {
+    ;(prisma.authUserCliente.findMany as any).mockResolvedValue([])
+    ;(prisma.authUserCr.findMany as any).mockResolvedValue([{ cr: "12345" }])
+    ;(prisma.$queryRaw as any).mockResolvedValue([])
+    const e = await resolverEscopoDados({ authUserId: "u2", isAdmin: true, classificacao: "CLIENTE" })
+    expect(e).toEqual({ tipo: "lista", crs: ["12345"] })
+  })
+  it("une CRs avulsos com os CRs expandidos dos clientes vinculados", async () => {
+    ;(prisma.authUserCliente.findMany as any).mockResolvedValue([{ nomeGrpCliente: "ACME" }])
+    ;(prisma.authUserCr.findMany as any).mockResolvedValue([{ cr: "99999" }])
+    ;(prisma.$queryRaw as any).mockResolvedValue([{ cr: "12345" }, { cr: "01489" }])
+    const e = await resolverEscopoDados({ authUserId: "u3", isAdmin: false, classificacao: "CLIENTE" })
+    expect(e.tipo).toBe("lista")
+    expect(new Set((e as any).crs)).toEqual(new Set(["12345", "01489", "99999"]))
+  })
+  it("sem vínculo e sem admin = lista vazia (fail-closed)", async () => {
+    ;(prisma.authUserCliente.findMany as any).mockResolvedValue([])
+    ;(prisma.authUserCr.findMany as any).mockResolvedValue([])
+    const e = await resolverEscopoDados({ authUserId: "u4", isAdmin: false, classificacao: "INTERNO" })
+    expect(e).toEqual({ tipo: "lista", crs: [] })
   })
 })

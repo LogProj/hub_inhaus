@@ -11,6 +11,8 @@
  * Módulo server-only.
  */
 
+import { prisma } from "@/lib/prisma"
+
 /** Deriva o código de 5 chars a partir do CR bruto (texto da SRA ou já o código). */
 export function codigoCr(crBruto: string | null | undefined): string | null {
   if (!crBruto) return null
@@ -75,4 +77,47 @@ export function assertLinhasNoEscopo<T>(
       )
     }
   }
+}
+
+export type UsuarioEscopo = {
+  authUserId: string | null | undefined
+  isAdmin: boolean
+  classificacao: string // 'INTERNO' | 'CLIENTE'
+}
+
+/**
+ * Resolve o escopo de dados do usuário.
+ *  - admin + INTERNO → { todos }.
+ *  - CLIENTE (mesmo admin) → NUNCA todos: sempre pelo vínculo (o "em hipótese
+ *    alguma"). Sem vínculo ⇒ lista vazia.
+ *  - demais → união dos CRs avulsos com os CRs expandidos via dm_cr dos clientes
+ *    vinculados. Sem vínculo ⇒ lista vazia (fail-closed).
+ */
+export async function resolverEscopoDados(usuario: UsuarioEscopo): Promise<EscopoDados> {
+  const ehCliente = usuario.classificacao === "CLIENTE"
+  if (usuario.isAdmin && !ehCliente) return { tipo: "todos" }
+  if (!usuario.authUserId) return { tipo: "lista", crs: [] }
+
+  const [clientes, avulsos] = await Promise.all([
+    prisma.authUserCliente.findMany({
+      where: { authUserId: usuario.authUserId },
+      select: { nomeGrpCliente: true },
+    }),
+    prisma.authUserCr.findMany({
+      where: { authUserId: usuario.authUserId },
+      select: { cr: true },
+    }),
+  ])
+
+  const crs = new Set<string>(avulsos.map((a) => a.cr))
+
+  if (clientes.length > 0) {
+    const grupos = clientes.map((c) => c.nomeGrpCliente)
+    const expandido = await prisma.$queryRaw<{ cr: string }[]>`
+      select cr from dm_cr where nome_grp_cliente = any(${grupos}::text[])
+    `
+    for (const r of expandido) if (r.cr) crs.add(r.cr)
+  }
+
+  return { tipo: "lista", crs: Array.from(crs) }
 }
