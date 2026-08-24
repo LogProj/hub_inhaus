@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { codigoCr } from "./escopo-dados"
+import { predicadoSraCr, EXPR_CODIGO_CR_SRA, type EscopoDados } from "./escopo-dados"
 
 describe("codigoCr", () => {
   it("extrai o código antes do ' - ' e mantém 5 chars", () => {
@@ -20,5 +21,24 @@ describe("codigoCr", () => {
   it("retorna null para vazio/nulo", () => {
     expect(codigoCr("")).toBeNull()
     expect(codigoCr(null)).toBeNull()
+  })
+})
+
+describe("predicadoSraCr", () => {
+  const TODOS: EscopoDados = { tipo: "todos" }
+  it("escopo 'todos' não filtra nada", () => {
+    const p = predicadoSraCr(TODOS, "cr", 5)
+    expect(p.sql).toBe("")
+    expect(p.params).toEqual([])
+  })
+  it("escopo lista injeta o código derivado contra o array de CRs no placeholder certo", () => {
+    const p = predicadoSraCr({ tipo: "lista", crs: ["12345", "01489"] }, "cr", 5)
+    expect(p.sql).toBe(` and ${EXPR_CODIGO_CR_SRA("cr")} = any($5::text[])`)
+    expect(p.params).toEqual([["12345", "01489"]])
+  })
+  it("escopo lista VAZIA bloqueia tudo (1=0), sem params", () => {
+    const p = predicadoSraCr({ tipo: "lista", crs: [] }, "cr", 5)
+    expect(p.sql).toBe(" and 1=0")
+    expect(p.params).toEqual([])
   })
 })
