@@ -58,7 +58,7 @@ Hoje `DashboardSidebar.tsx` (linha ~46) monta `GRUPOS_DOMINIO` a partir de **tod
 - Telas `emBreve` continuam fora da sidebar (regra atual preservada).
 
 Resultado: admin/liderança vê tudo; um usuário só com as telas de Desvios concedidas vê
-**apenas o domínio Logística com essas 2 telas**.
+**apenas o domínio Clientes com essas 2 telas**.
 
 ### A.2 Guarda de rota (defesa real)
 
@@ -139,9 +139,10 @@ todas com `contratanteId` = Atlas Copco. Mapeia "Caso Resolvido?" → `status`. 
 
 ### B.4 Navegação e telas
 
-- Novo domínio em `src/lib/domains.ts`: **`logistica`** ("Logística"), com telas:
-  - `desvios-formulario` → `/dashboards/logistica/desvios/novo` (Formulário de Desvios).
-  - `desvios-acompanhamento` → `/dashboards/logistica/desvios` (Acompanhamento).
+- Novo domínio em `src/lib/domains.ts`: **`clientes`** ("Clientes"), área multi-tenant
+  que cresce por cliente contratante. As telas da Atlas ficam sob o slug do tenant:
+  - `desvios-formulario` → `/dashboards/clientes/atlas/desvios/novo` (Formulário de Desvios).
+  - `desvios-acompanhamento` → `/dashboards/clientes/atlas/desvios` (Acompanhamento).
 - **Formulário de Desvios:** formulário de cadastro (campos B.2), dropdowns pesquisáveis
   no padrão `Combobox`/`MultiCombobox`. Botão **info** (`InfoIndicador`) obrigatório com
   as regras de negócio. Grava via route handler `POST /api/desvios` (validação zod, guard
@@ -165,7 +166,7 @@ todas com `contratanteId` = Atlas Copco. Mapeia "Caso Resolvido?" → `status`. 
 ## Arquitetura / arquivos (visão)
 
 ```
-src/lib/domains.ts                     # + domínio "logistica" (2 telas)
+src/lib/domains.ts                     # + domínio "clientes" (2 telas, sob slug atlas)
 src/lib/dashboard-acesso.ts            # + telas visíveis + assertTelaVisivel()
 src/components/dashboard/DashboardSidebar.tsx  # monta grupos por visibleScreens
 src/app/dashboards/layout.tsx          # repassa telas visíveis à shell
@@ -177,8 +178,8 @@ src/lib/seguranca/escopo-contratante.ts  # gateway de isolamento do tenant (2 tr
 src/lib/desvios/index.ts               # regras de negócio + listas de dropdown
 src/lib/desvios/schemas.ts             # zod
 
-src/app/dashboards/logistica/desvios/page.tsx        # Acompanhamento
-src/app/dashboards/logistica/desvios/novo/page.tsx   # Formulário
+src/app/dashboards/clientes/atlas/desvios/page.tsx        # Acompanhamento
+src/app/dashboards/clientes/atlas/desvios/novo/page.tsx   # Formulário
 src/app/api/desvios/route.ts           # POST (criar)
 src/app/api/desvios/[id]/route.ts      # PATCH (status/tratativa)
 src/components/desvios/*               # formulário, tabela paginada, detalhe, info
