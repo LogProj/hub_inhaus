@@ -14,6 +14,9 @@ import {
   type ControleQuadro,
   type OpcoesQuadro,
 } from "@/lib/quadro"
+import { getSessionReadOnly } from "@/lib/auth-session"
+import { acessoLivreLiberado } from "@/lib/dev-auth"
+import { resolverEscopoDados, type EscopoDados } from "@/lib/seguranca/escopo-dados"
 
 export const metadata: Metadata = { title: "Controle de Quadro" }
 
@@ -60,12 +63,27 @@ export default async function ControleQuadroPage({
   const meses = lista(searchParams.mes)
   const cargosExcluidos = lista(searchParams.excluir)
 
+  // Escopo de dados do usuário. Acesso livre de dev = Visitante admin interno (vê tudo).
+  let escopo: EscopoDados = { tipo: "todos" }
+  if (!acessoLivreLiberado()) {
+    const r = await getSessionReadOnly()
+    if (r.status !== "ok") {
+      escopo = { tipo: "lista", crs: [] } // sem sessão resolvida = nada
+    } else {
+      escopo = await resolverEscopoDados({
+        authUserId: r.sessao.user.id,
+        isAdmin: r.sessao.authorization.isAdmin,
+        classificacao: r.sessao.authorization.classificacao,
+      })
+    }
+  }
+
   let dados: ControleQuadro | null = null
   let opcoes: OpcoesQuadro | null = null
   try {
     ;[dados, opcoes] = await Promise.all([
-      getControleQuadro({ gerentes, crs, meses, cargosExcluidos }),
-      getOpcoesQuadro(meses),
+      getControleQuadro({ gerentes, crs, meses, cargosExcluidos }, escopo),
+      getOpcoesQuadro(meses, escopo),
     ])
   } catch {
     dados = null
