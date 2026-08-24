@@ -20,6 +20,9 @@ model AuthUser {
   email          String    @unique
   name           String?
   isAdmin        Boolean   @default(false) @map("is_admin")
+  // Classificação LOCAL do hub (nunca vai ao global_auth). Não restringe permissões:
+  // 'INTERNO' (equipe In-Haus) | 'CLIENTE' (externo, sempre travado por escopo).
+  classificacao  String    @default("INTERNO")
   hasAccess      Boolean   @default(false) @map("has_access")
   // Telas locais que este usuário pode visualizar (autorização DESTE projeto — nunca
   // no global_auth). Guarda as chaves de TODAS_AS_TELAS (ver src/lib/domains.ts). Admin
@@ -30,6 +33,31 @@ model AuthUser {
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   @@map("auth_users")
+}
+
+// Vínculo usuário → CLIENTE (grupo). Herda TODOS os CRs cujo dm_cr.nome_grp_cliente
+// bate — inclusive os que entrarem depois. Autorização LOCAL do hub.
+model AuthUserCliente {
+  id             Int      @id @default(autoincrement())
+  authUserId     String   @map("auth_user_id")
+  nomeGrpCliente String   @map("nome_grp_cliente")
+  criadoEm       DateTime @default(now()) @map("criado_em")
+
+  @@unique([authUserId, nomeGrpCliente])
+  @@index([authUserId])
+  @@map("auth_user_cliente")
+}
+
+// Vínculo usuário → CR avulso (código de 5 chars = dm_cr.cr). Autorização LOCAL.
+model AuthUserCr {
+  id         Int      @id @default(autoincrement())
+  authUserId String   @map("auth_user_id")
+  cr         String   @db.VarChar(5)
+  criadoEm   DateTime @default(now()) @map("criado_em")
+
+  @@unique([authUserId, cr])
+  @@index([authUserId])
+  @@map("auth_user_cr")
 }
 
 // ===========================================================================
