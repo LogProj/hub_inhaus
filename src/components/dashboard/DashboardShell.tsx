@@ -21,9 +21,11 @@ type DashboardShellProps = {
   epiValida?: boolean
   /** Líder puro (só preenche): no MOBILE não vê a sidebar — fluxo enxuto tipo app. */
   soPreenche?: boolean
+  /** Telas concedidas ao usuário (null = todas, ex.: admin/dev) — filtra os grupos de domínio da sidebar. */
+  visibleScreens?: string[] | null
 }
 
-export function DashboardShell({ children, nome, email, isAdmin, epiConfig = false, epiValida = false, soPreenche = false }: DashboardShellProps) {
+export function DashboardShell({ children, nome, email, isAdmin, epiConfig = false, epiValida = false, soPreenche = false, visibleScreens = null }: DashboardShellProps) {
   const router = useRouter()
   const [drawer, setDrawer] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -58,6 +60,7 @@ export function DashboardShell({ children, nome, email, isAdmin, epiConfig = fal
           email={email}
           onLogout={handleLogout}
           signingOut={signingOut}
+          visibleScreens={visibleScreens}
         />
       </aside>
 
@@ -91,6 +94,7 @@ export function DashboardShell({ children, nome, email, isAdmin, epiConfig = fal
             onLogout={handleLogout}
             signingOut={signingOut}
             onNavigate={() => setDrawer(false)}
+            visibleScreens={visibleScreens}
           />
         </div>
       </div>

@@ -12,6 +12,7 @@ export default async function DashboardsLayout({ children }: { children: React.R
       epiConfig={papeis.epiConfig}
       epiValida={papeis.epiValida}
       soPreenche={papeis.soPreenche}
+      visibleScreens={papeis.visibleScreens}
     >
       {children}
     </DashboardShell>

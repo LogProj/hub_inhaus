@@ -43,17 +43,23 @@ const GRUPO_GERAL: NavGroup = {
 // Telas marcadas como `emBreve` (ainda não construídas) NÃO entram na sidebar —
 // só aparecem na command palette, como mapa do produto. Grupos que ficam sem
 // nenhuma tela pronta são omitidos.
-const GRUPOS_DOMINIO: NavGroup[] = DOMINIOS.map((dominio) => ({
-  title: dominio.label,
-  icon: dominio.icone,
-  items: dominio.telas
-    .filter((tela) => !tela.emBreve)
-    .map((tela) => ({
-      href: tela.href,
-      label: tela.label,
-      icon: tela.icone ?? LayoutDashboard,
-    })),
-})).filter((grupo) => grupo.items.length > 0)
+// `visibleScreens` (null = mostra tudo, ex.: admin/dev) restringe as telas de cada
+// domínio às concedidas ao usuário — ver src/lib/dashboard-acesso.ts.
+function gruposDominio(visibleScreens: string[] | null): NavGroup[] {
+  const permitidas = visibleScreens ? new Set(visibleScreens) : null
+  return DOMINIOS.map((dominio) => ({
+    title: dominio.label,
+    icon: dominio.icone,
+    items: dominio.telas
+      .filter((tela) => !tela.emBreve)
+      .filter((tela) => permitidas === null || permitidas.has(tela.key))
+      .map((tela) => ({
+        href: tela.href,
+        label: tela.label,
+        icon: tela.icone ?? LayoutDashboard,
+      })),
+  })).filter((grupo) => grupo.items.length > 0)
+}
 
 // Módulo de EPI — navegação POR PAPEL:
 //  - quem CONFIGURA (admin/Segurança) vê Configurar/Checklists/Líderes + Validações;
@@ -97,6 +103,7 @@ export function DashboardSidebar({
   email = null,
   onLogout,
   signingOut = false,
+  visibleScreens = null,
 }: {
   onNavigate?: () => void
   isAdmin?: boolean
@@ -106,6 +113,7 @@ export function DashboardSidebar({
   email?: string | null
   onLogout?: () => void
   signingOut?: boolean
+  visibleScreens?: string[] | null
 }) {
   const pathname = usePathname()
   const grupoEpiAtual = grupoEpi(epiConfig, epiValida)
@@ -122,7 +130,7 @@ export function DashboardSidebar({
   }
   const grupos = [
     grupoGeral,
-    ...GRUPOS_DOMINIO,
+    ...gruposDominio(visibleScreens),
     ...(grupoEpiAtual ? [grupoEpiAtual] : []),
     ...(isAdmin ? [GRUPO_ADMIN] : []),
   ]
