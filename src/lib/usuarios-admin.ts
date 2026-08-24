@@ -34,19 +34,39 @@ export type UsuarioAdmin = {
   visibleScreens: string[]
   /** Papel Segurança (SST central) — configura o módulo de EPI. */
   ehSeguranca: boolean
+  /** Classificação local do hub (INTERNO | CLIENTE). Não restringe permissões. */
+  classificacao: string
+  /** Escopo de dados: grupos de cliente (dm_cr.nome_grp_cliente) vinculados. */
+  clientes: string[]
+  /** Escopo de dados: CRs avulsos (código 5 chars) vinculados. */
+  crs: string[]
 }
 
 /** Mescla as identidades do global_auth com o acesso local (auth_users). */
 export async function listarUsuariosAdmin(accessToken: string): Promise<UsuarioAdmin[]> {
-  const [globais, locais, segurancaIds] = await Promise.all([
+  const [globais, locais, segurancaIds, vClientes, vCrs] = await Promise.all([
     listGlobalAuthUsers(accessToken),
     prisma.authUser.findMany(),
     listarAuthUserIdsSeguranca(),
+    prisma.authUserCliente.findMany({ select: { authUserId: true, nomeGrpCliente: true } }),
+    prisma.authUserCr.findMany({ select: { authUserId: true, cr: true } }),
   ])
   const porEmail = new Map(locais.map((l) => [l.email.toLowerCase(), l]))
   const porUuid = new Map(
     locais.filter((l) => l.authUserId).map((l) => [l.authUserId as string, l]),
   )
+  const clientesPorUuid = new Map<string, string[]>()
+  for (const v of vClientes) {
+    const arr = clientesPorUuid.get(v.authUserId) ?? []
+    arr.push(v.nomeGrpCliente)
+    clientesPorUuid.set(v.authUserId, arr)
+  }
+  const crsPorUuid = new Map<string, string[]>()
+  for (const v of vCrs) {
+    const arr = crsPorUuid.get(v.authUserId) ?? []
+    arr.push(v.cr)
+    crsPorUuid.set(v.authUserId, arr)
+  }
   return globais
     .map((g): UsuarioAdmin => {
       const local = porUuid.get(g.id) ?? porEmail.get(normalizeEmail(g.email))
@@ -61,6 +81,9 @@ export async function listarUsuariosAdmin(accessToken: string): Promise<UsuarioA
         isAdmin: local?.isAdmin ?? false,
         visibleScreens: local?.visibleScreens ?? [],
         ehSeguranca: segurancaIds.has(g.id),
+        classificacao: local?.classificacao ?? "INTERNO",
+        clientes: clientesPorUuid.get(g.id) ?? [],
+        crs: crsPorUuid.get(g.id) ?? [],
       }
     })
     .sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email, "pt-BR"))
@@ -79,6 +102,9 @@ export async function criarUsuarioAdmin(input: {
   hasAccess: boolean
   visibleScreens: string[]
   seguranca: boolean
+  classificacao: string
+  clientes: string[]
+  crs: string[]
 }): Promise<UsuarioAdmin> {
   const email = normalizeEmail(input.email)
   let identidade: GlobalAuthUser | null = null
@@ -124,6 +150,7 @@ export async function criarUsuarioAdmin(input: {
   const uuid = local.authUserId ?? identidade?.id ?? null
   const ehSeg = Boolean(uuid && input.seguranca)
   if (uuid && input.seguranca) await definirSegurancaCentral(uuid, true)
+  await salvarClassificacaoEVinculos(email, uuid, input.classificacao, input.clientes, input.crs)
 
   return {
     authUserId: uuid,
@@ -136,6 +163,9 @@ export async function criarUsuarioAdmin(input: {
     isAdmin: local.isAdmin,
     visibleScreens: local.visibleScreens,
     ehSeguranca: ehSeg,
+    classificacao: input.classificacao,
+    clientes: input.clientes,
+    crs: input.crs,
   }
 }
 
@@ -151,6 +181,9 @@ export async function atualizarAcessoLocal(input: {
   isAdmin: boolean
   visibleScreens: string[]
   seguranca?: boolean
+  classificacao?: string
+  clientes?: string[]
+  crs?: string[]
 }): Promise<UsuarioAdmin> {
   const email = normalizeEmail(input.email)
   const telas = sanitizarTelas(input.visibleScreens)
@@ -181,6 +214,9 @@ export async function atualizarAcessoLocal(input: {
     ehSeg = input.seguranca
   }
 
+  const classe = input.classificacao ?? "INTERNO"
+  await salvarClassificacaoEVinculos(email, uuid, classe, input.clientes ?? [], input.crs ?? [])
+
   return {
     authUserId: uuid,
     name: local.name,
@@ -192,5 +228,39 @@ export async function atualizarAcessoLocal(input: {
     isAdmin: local.isAdmin,
     visibleScreens: local.visibleScreens,
     ehSeguranca: ehSeg,
+    classificacao: classe,
+    clientes: input.clientes ?? [],
+    crs: input.crs ?? [],
   }
+}
+
+/**
+ * Grava a classificação e SUBSTITUI os vínculos de escopo (cliente/CR) do usuário,
+ * em transação. Chave = UUID do global_auth. Sem uuid, não há como amarrar escopo.
+ */
+async function salvarClassificacaoEVinculos(
+  email: string,
+  uuid: string | null,
+  classificacao: string,
+  clientes: string[],
+  crs: string[],
+): Promise<void> {
+  await prisma.authUser.update({ where: { email }, data: { classificacao } })
+  if (!uuid) return
+  await prisma.$transaction([
+    prisma.authUserCliente.deleteMany({ where: { authUserId: uuid } }),
+    prisma.authUserCr.deleteMany({ where: { authUserId: uuid } }),
+    ...(clientes.length
+      ? [prisma.authUserCliente.createMany({
+          data: clientes.map((nomeGrpCliente) => ({ authUserId: uuid, nomeGrpCliente })),
+          skipDuplicates: true,
+        })]
+      : []),
+    ...(crs.length
+      ? [prisma.authUserCr.createMany({
+          data: crs.map((cr) => ({ authUserId: uuid, cr })),
+          skipDuplicates: true,
+        })]
+      : []),
+  ])
 }

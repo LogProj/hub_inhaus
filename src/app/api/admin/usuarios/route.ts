@@ -32,6 +32,9 @@ const criarSchema = z.object({
   hasAccess: z.boolean().default(true),
   visibleScreens: telasSchema,
   seguranca: z.boolean().default(false),
+  classificacao: z.enum(["INTERNO", "CLIENTE"]).default("INTERNO"),
+  clientes: z.array(z.string().trim().min(1)).default([]),
+  crs: z.array(z.string().trim().min(1)).default([]),
 })
 
 const acessoSchema = z.object({
@@ -42,6 +45,9 @@ const acessoSchema = z.object({
   isAdmin: z.boolean(),
   visibleScreens: telasSchema,
   seguranca: z.boolean().optional(),
+  classificacao: z.enum(["INTERNO", "CLIENTE"]).default("INTERNO"),
+  clientes: z.array(z.string().trim().min(1)).default([]),
+  crs: z.array(z.string().trim().min(1)).default([]),
 })
 
 function mapaErro(e: unknown): NextResponse {
@@ -107,6 +113,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: primeiroErro(parsed.error) }, { status: 400 })
   }
 
+  if (
+    parsed.data.classificacao === "CLIENTE" &&
+    parsed.data.clientes.length === 0 &&
+    parsed.data.crs.length === 0
+  ) {
+    return NextResponse.json(
+      { error: "Usuário classificado como CLIENTE precisa de ao menos um cliente ou CR vinculado." },
+      { status: 400 },
+    )
+  }
+  if (parsed.data.classificacao === "CLIENTE" && parsed.data.isAdmin) {
+    return NextResponse.json({ error: "Usuário CLIENTE não pode ser administrador." }, { status: 400 })
+  }
+
   try {
     const usuario = await criarUsuarioAdmin(parsed.data)
     return NextResponse.json({ usuario })
@@ -130,6 +150,20 @@ export async function PATCH(request: Request) {
   const parsed = acessoSchema.safeParse(corpo)
   if (!parsed.success) {
     return NextResponse.json({ error: primeiroErro(parsed.error) }, { status: 400 })
+  }
+
+  if (
+    parsed.data.classificacao === "CLIENTE" &&
+    parsed.data.clientes.length === 0 &&
+    parsed.data.crs.length === 0
+  ) {
+    return NextResponse.json(
+      { error: "Usuário classificado como CLIENTE precisa de ao menos um cliente ou CR vinculado." },
+      { status: 400 },
+    )
+  }
+  if (parsed.data.classificacao === "CLIENTE" && parsed.data.isAdmin) {
+    return NextResponse.json({ error: "Usuário CLIENTE não pode ser administrador." }, { status: 400 })
   }
 
   const alvoEhEuMesmo =
