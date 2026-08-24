@@ -44,6 +44,9 @@ export type Authorization = {
   nome: string | null
   isAdmin: boolean
   hasAccess: boolean
+  // Classificação local (INTERNO | CLIENTE). Não restringe permissões; alimenta o
+  // escopo de dados (CLIENTE nunca vê tudo).
+  classificacao: string
   // Telas locais liberadas para este usuário. Admin sempre recebe TODAS (CHAVES_DE_TELA),
   // independente do que está salvo no banco — regra de autorização deste projeto.
   visibleScreens: string[]
@@ -100,6 +103,7 @@ async function resolveAuthorization(user: GlobalAuthUser): Promise<Authorization
       nome: registro.name ?? user.name ?? null,
       isAdmin: registro.isAdmin,
       hasAccess: registro.hasAccess,
+      classificacao: registro.classificacao ?? "INTERNO",
       // Admin enxerga TODAS as telas, sem restrição; demais usam o que foi concedido.
       visibleScreens: registro.isAdmin ? CHAVES_DE_TELA : (registro.visibleScreens ?? []),
     }
@@ -112,6 +116,7 @@ async function resolveAuthorization(user: GlobalAuthUser): Promise<Authorization
         nome: user.name ?? null,
         isAdmin: true,
         hasAccess: true,
+        classificacao: "INTERNO",
         visibleScreens: CHAVES_DE_TELA,
       }
     }
