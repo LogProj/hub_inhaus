@@ -1,4 +1,9 @@
 import { inhausPool } from "@/lib/db-inhaus"
+import {
+  predicadoSraCr,
+  assertLinhasNoEscopo,
+  type EscopoDados,
+} from "@/lib/seguranca/escopo-dados"
 
 /**
  * Indicador CONTROLE DE QUADRO.
@@ -94,9 +99,10 @@ async function resolverDataReferencia(meses: string[]): Promise<string | null> {
 }
 
 /** Opções dos filtros, no escopo do gerente regional fixo + fotografia atual. */
-export async function getOpcoesQuadro(meses: string[]): Promise<OpcoesQuadro> {
+export async function getOpcoesQuadro(meses: string[], escopoDados: EscopoDados): Promise<OpcoesQuadro> {
   const dref = await resolverDataReferencia(meses)
-  const escopo = "where upper(gerente_regional)=upper($1) and data_referencia=$2"
+  const pred = predicadoSraCr(escopoDados, "cr", 3) // $1 gerente, $2 data, $3 escopo
+  const condOpc = `where upper(gerente_regional)=upper($1) and data_referencia=$2${pred.sql}`
 
   const [listaMeses, gerentes, crs, cargos] = await Promise.all([
     inhausPool.query(
@@ -104,20 +110,20 @@ export async function getOpcoesQuadro(meses: string[]): Promise<OpcoesQuadro> {
     ),
     dref
       ? inhausPool.query(
-          `select distinct gerente g from vw_sra_geral ${escopo} and gerente is not null order by g`,
-          [GERENTE_REGIONAL_FIXO, dref],
+          `select distinct gerente g from vw_sra_geral ${condOpc} and gerente is not null order by g`,
+          [GERENTE_REGIONAL_FIXO, dref, ...pred.params],
         )
       : Promise.resolve({ rows: [] as { g: string }[] }),
     dref
       ? inhausPool.query(
-          `select distinct cr from vw_sra_geral ${escopo} and cr is not null order by cr`,
-          [GERENTE_REGIONAL_FIXO, dref],
+          `select distinct cr from vw_sra_geral ${condOpc} and cr is not null order by cr`,
+          [GERENTE_REGIONAL_FIXO, dref, ...pred.params],
         )
       : Promise.resolve({ rows: [] as { cr: string }[] }),
     dref
       ? inhausPool.query(
-          `select distinct descricao_funcao f from vw_sra_geral ${escopo} and descricao_funcao is not null order by f`,
-          [GERENTE_REGIONAL_FIXO, dref],
+          `select distinct descricao_funcao f from vw_sra_geral ${condOpc} and descricao_funcao is not null order by f`,
+          [GERENTE_REGIONAL_FIXO, dref, ...pred.params],
         )
       : Promise.resolve({ rows: [] as { f: string }[] }),
   ])
@@ -130,7 +136,7 @@ export async function getOpcoesQuadro(meses: string[]): Promise<OpcoesQuadro> {
   }
 }
 
-export async function getControleQuadro(filtros: FiltrosQuadro): Promise<ControleQuadro> {
+export async function getControleQuadro(filtros: FiltrosQuadro, escopo: EscopoDados): Promise<ControleQuadro> {
   const { gerentes, crs, meses, cargosExcluidos } = filtros
   const dataReferencia = await resolverDataReferencia(meses)
 
@@ -150,24 +156,27 @@ export async function getControleQuadro(filtros: FiltrosQuadro): Promise<Control
 
   // Filtros sobre a fotografia (dref): $1 gerente regional · $2 data ·
   // $3 cargos excluídos · $4 CRs · $5 gerentes.
+  const predFoto = predicadoSraCr(escopo, "cr", 6)
   const condFoto = `where upper(gerente_regional)=upper($1)
       and data_referencia=$2
       and descricao_funcao <> all($3::text[])
       and (cardinality($4::text[])=0 or cr = any($4::text[]))
-      and (cardinality($5::text[])=0 or gerente = any($5::text[]))`
-  const argsFoto = [GERENTE_REGIONAL_FIXO, dataReferencia, cargosExcluidos, crs, gerentes]
+      and (cardinality($5::text[])=0 or gerente = any($5::text[]))${predFoto.sql}`
+  const argsFoto = [GERENTE_REGIONAL_FIXO, dataReferencia, cargosExcluidos, crs, gerentes, ...predFoto.params]
 
   // Filtros sobre o histórico (sem fixar data): $1 gerente regional ·
   // $2 cargos excluídos · $3 CRs · $4 gerentes · $5 meses.
+  const predHist = predicadoSraCr(escopo, "cr", 6)
   const condHist = `where upper(gerente_regional)=upper($1)
       and descricao_funcao <> all($2::text[])
       and (cardinality($3::text[])=0 or cr = any($3::text[]))
       and (cardinality($4::text[])=0 or gerente = any($4::text[]))
-      and (cardinality($5::text[])=0 or to_char(data_referencia,'YYYY-MM') = any($5::text[]))`
-  const argsHist = [GERENTE_REGIONAL_FIXO, cargosExcluidos, crs, gerentes, meses]
+      and (cardinality($5::text[])=0 or to_char(data_referencia,'YYYY-MM') = any($5::text[]))${predHist.sql}`
+  const argsHist = [GERENTE_REGIONAL_FIXO, cargosExcluidos, crs, gerentes, meses, ...predHist.params]
 
   // Desligamentos: mês(es) selecionado(s), ou o mês da fotografia atual.
   const mesesDeslig = meses.length > 0 ? meses : [dataReferencia.slice(0, 7)]
+  const predDeslig = predicadoSraCr(escopo, "cr", 6)
 
   const [total, situacao, porCr, porCargo, deslig, linha, mensal] = await Promise.all([
     inhausPool.query(`select count(distinct matricula)::int q from vw_sra_geral ${condFoto}`, argsFoto),
@@ -192,8 +201,8 @@ export async function getControleQuadro(filtros: FiltrosQuadro): Promise<Control
          and (cardinality($3::text[])=0 or cr = any($3::text[]))
          and (cardinality($4::text[])=0 or gerente = any($4::text[]))
          and dt_demissao is not null
-         and to_char(dt_demissao,'YYYY-MM') = any($5::text[])`,
-      [GERENTE_REGIONAL_FIXO, cargosExcluidos, crs, gerentes, mesesDeslig],
+         and to_char(dt_demissao,'YYYY-MM') = any($5::text[])${predDeslig.sql}`,
+      [GERENTE_REGIONAL_FIXO, cargosExcluidos, crs, gerentes, mesesDeslig, ...predDeslig.params],
     ),
     inhausPool.query(
       `select to_char(data_referencia,'YYYY-MM-DD') dia, count(distinct matricula)::int q
@@ -210,6 +219,9 @@ export async function getControleQuadro(filtros: FiltrosQuadro): Promise<Control
       argsHist,
     ),
   ])
+
+  // Trava 2: nenhuma linha de CR fora do escopo pode escapar.
+  assertLinhasNoEscopo(porCr.rows, (r) => r.cr as string, escopo)
 
   const desligamentosMes = paraNumero(deslig.rows[0]?.q)
   const totalQuadro = paraNumero(total.rows[0]?.q)
