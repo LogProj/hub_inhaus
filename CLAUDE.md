@@ -119,6 +119,28 @@ tarefa. O info nunca pode ficar defasado em relação ao cálculo real.
   `.env.local` **e** fora de produção, entra sem `global_auth` como "Visitante" (admin).
   Trava dupla; nunca vale em produção. É como revisar o hub sem credenciais.
 
+### Isolamento de dados por CR / Cliente (multi-tenant)
+Recorte de QUAIS dados cada usuário vê, por CR/cliente. Tudo é autorização **local** —
+**nada é escrito no `global_auth`** (ligado pelo UUID `authUserId`).
+- **Classificação** `INTERNO | CLIENTE` em `auth_users` (`classificacao`). É **ortogonal às
+  permissões**: não restringe telas/papéis que o admin concede; serve para rotular externos
+  e reforçar o isolamento. `CLIENTE` **nunca** recebe escopo `todos` (nem se marcado admin).
+- **Escopo** = vínculos `auth_user_cliente` (grupo `dm_cr.nome_grp_cliente`, herda todos os
+  CRs do grupo, inclusive futuros) e/ou `auth_user_cr` (CR avulso, código 5-char = `dm_cr.cr`).
+  Sem vínculo e sem admin interno ⇒ **não vê dado** (fail-closed).
+- **Gateway obrigatório** `src/lib/seguranca/escopo-dados.ts`: `resolverEscopoDados()` monta o
+  `EscopoDados` (`todos` | lista de CRs); **Trava 1** `predicadoSraCr()` injeta o filtro de CR
+  em TODA query de dado; **Trava 2** `assertLinhasNoEscopo()` confere a saída e **lança** se
+  vazar CR fora do escopo. Todo indicador novo por CR DEVE passar pelas duas.
+- **Chave de isolamento** = **código de 5 chars** do CR (`codigoCr`, casa com `dm_cr.cr`).
+  Tabelas de dados de EPI têm coluna `cr_cod` (gravada nas escritas; backfill pronto).
+- **RLS está DORMENTE** em `prisma/sql/008_isolamento_cr.sql`: a conexão do hub é `postgres`
+  (superusuário **ignora RLS**), então a trava efetiva é a aplicação. As policies estão prontas
+  para ativar se um dia o hub usar um role não-superusuário (decisão do cliente: não trocar as
+  connection strings).
+- Concessão na tela **Usuários** (classificação + clientes/CRs); endpoint
+  `GET /api/admin/clientes-crs` alimenta os seletores.
+
 ### Indicador REAL: Controle de Quadro (`/dashboards/rh/controle-quadro`)
 Único indicador ligado a dados reais. Lê a view `vw_sra_geral` (banco `db_inhaus`,
 `DATABASE_URL_INHAUS`). Módulo de dados: `src/lib/quadro.ts` (regras de negócio no topo).
