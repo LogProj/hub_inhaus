@@ -346,3 +346,57 @@ model DmCr {
   @@index([regional])
   @@map("dm_cr")
 }
+
+// ===========================================================================
+// MÓDULO CLIENTES — Cliente Contratante (tenant) + Desvios.
+// Tabelas criadas por prisma/sql/009_desvios.sql (SQL manual, NUNCA db push).
+// ===========================================================================
+
+model ClienteContratante {
+  id        Int      @id @default(autoincrement())
+  nome      String   @unique
+  slug      String   @unique
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  @@map("cliente_contratante")
+}
+
+model AuthUserContratante {
+  id            Int      @id @default(autoincrement())
+  authUserId    String   @map("auth_user_id")
+  contratanteId Int      @map("contratante_id")
+  criadoEm      DateTime @default(now()) @map("criado_em")
+
+  @@unique([authUserId, contratanteId])
+  @@index([authUserId])
+  @@map("auth_user_contratante")
+}
+
+model Desvio {
+  id                 Int       @id @default(autoincrement())
+  contratanteId      Int       @map("contratante_id")
+  responsavelInterno String?   @map("responsavel_interno")
+  numeroOtbWbs       String?   @map("numero_otb_wbs")
+  tipo               String?
+  divisao            String?
+  solicitante        String?
+  dataOcorrencia     DateTime? @map("data_ocorrencia") @db.Date
+  clienteFinal       String?   @map("cliente_final")
+  motivo             String?
+  causaRaiz          String?   @map("causa_raiz")
+  resumoCaso         String?   @map("resumo_caso")
+  solucao            String?
+  status             String    @default("EM_TRATATIVA")
+  dataFaturamento    DateTime? @map("data_faturamento") @db.Date
+  dataSeparacao      DateTime? @map("data_separacao") @db.Date
+  valor              Decimal?  @db.Decimal(14, 2)
+  criadoPor          String?   @map("criado_por")
+  atualizadoPor      String?   @map("atualizado_por")
+  criadoEm           DateTime  @default(now()) @map("criado_em")
+  atualizadoEm       DateTime  @updatedAt @map("atualizado_em")
+
+  @@index([contratanteId])
+  @@index([status])
+  @@map("desvio")
+}
