@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import type { ItemChecklist } from "@/lib/epi/schemas"
 import { gerarToken } from "@/lib/epi/tokens"
 import { clienteDoCr, nomeClientePreferido } from "@/lib/epi/dmcr"
+import { codigoCr } from "@/lib/seguranca/escopo-dados"
 
 /**
  * Camada de CONFIGURAÇÃO do módulo de EPI (escrita e leitura das entidades de
@@ -221,7 +222,9 @@ export async function criarTurno(dados: {
   diasSemana: number[]
 }) {
   // Gera o token público estável já na criação (é o que vai no QR/link).
-  return prisma.turno.create({ data: { ...dados, tokenPublico: gerarToken() } })
+  return prisma.turno.create({
+    data: { ...dados, crCod: codigoCr(dados.cr), tokenPublico: gerarToken() },
+  })
 }
 
 export async function atualizarTurno(

@@ -135,6 +135,7 @@ model Turno {
   id           Int                @id @default(autoincrement())
   clienteId    Int                @map("cliente_id")
   cr           String
+  crCod        String?            @map("cr_cod")
   nome         String // "Manhã", "1º turno", etc.
   diasSemana   Int[]              @map("dias_semana")
   // Token público ESTÁVEL do turno: é o que vai no QR/link. Ao ser aberto,
@@ -206,6 +207,7 @@ model AtribuicaoTurno {
   id        Int       @id @default(autoincrement())
   turnoId   Int       @map("turno_id")
   cr        String
+  crCod     String?   @map("cr_cod")
   cpfHash   String    @map("cpf_hash") // HMAC do CPF — identidade
   matricula String? // informativo (colide entre CRs)
   inicioEm  DateTime  @default(now()) @map("inicio_em")
@@ -239,6 +241,7 @@ model ResponsavelTurno {
 model SessaoTurno {
   id                Int              @id @default(autoincrement())
   turnoId           Int              @map("turno_id")
+  crCod             String?          @map("cr_cod")
   checklistVersaoId Int              @map("checklist_versao_id")
   data              DateTime         @db.Date
   token             String           @unique
@@ -260,6 +263,7 @@ model SessaoTurno {
 model PresencaSessao {
   id       Int         @id @default(autoincrement())
   sessaoId Int         @map("sessao_id")
+  crCod    String?     @map("cr_cod")
   cpfHash  String      @map("cpf_hash")
   nome     String
   presente Boolean     @default(true)
@@ -279,6 +283,7 @@ model RespostaEpi {
   nome         String
   cargo        String?
   cr           String
+  crCod        String?     @map("cr_cod")
   // v2: preenchida pelo LÍDER, por colaborador. `ausente` = colaborador não estava
   // presente (não preenche EPI). Presente → respostas = [{ epiId, epi, conforme }].
   ausente      Boolean     @default(false)
@@ -296,6 +301,7 @@ model RespostaEpi {
 model ValidacaoSessao {
   id           Int         @id @default(autoincrement())
   sessaoId     Int         @unique @map("sessao_id")
+  crCod        String?     @map("cr_cod")
   authUserId   String      @map("auth_user_id")
   nomeLider    String      @map("nome_lider")
   validadoEm   DateTime    @default(now()) @map("validado_em")

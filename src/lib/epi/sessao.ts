@@ -9,6 +9,7 @@ import { hojeSaoPaulo, type DataNegocio } from "@/lib/epi/datas"
 import type { ItemChecklist, RespostaItem } from "@/lib/epi/schemas"
 import type { EscopoUsuario } from "@/lib/epi/escopo"
 import type { UsuarioAtual } from "@/lib/epi/guardas"
+import { codigoCr } from "@/lib/seguranca/escopo-dados"
 
 /**
  * MOTOR DA SESSÃO de EPI (execução).
@@ -74,6 +75,7 @@ async function garantirSessaoHoje(turno: TurnoPublico, hoje: DataNegocio) {
     update: {},
     create: {
       turnoId: turno.id,
+      crCod: codigoCr(turno.cr),
       checklistVersaoId: versao.id,
       data: hoje.data,
       token: gerarToken(),
@@ -177,6 +179,7 @@ export async function registrarRespostaPublica(entrada: {
       nome: pessoa.nome,
       cargo: pessoa.cargo,
       cr: turno.cr,
+      crCod: codigoCr(turno.cr),
     },
     create: {
       sessaoId: sessao.id,
@@ -184,6 +187,7 @@ export async function registrarRespostaPublica(entrada: {
       nome: pessoa.nome,
       cargo: pessoa.cargo,
       cr: turno.cr,
+      crCod: codigoCr(turno.cr),
       respostas: respostasArmazenar,
       conforme,
     },
@@ -394,6 +398,7 @@ export async function validarSessao(
     prisma.presencaSessao.createMany({
       data: presencaValida.map((p) => ({
         sessaoId: sessao.id,
+        crCod: codigoCr(sessao.turno.cr),
         cpfHash: p.cpfHash,
         nome: nomePorHash.get(p.cpfHash) ?? "—",
         presente: p.presente,
@@ -402,6 +407,7 @@ export async function validarSessao(
     prisma.validacaoSessao.create({
       data: {
         sessaoId: sessao.id,
+        crCod: codigoCr(sessao.turno.cr),
         authUserId: usuario.authUserId ?? "acesso-livre",
         nomeLider: usuario.nome ?? "—",
         hashConteudo,

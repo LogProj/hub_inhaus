@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { getQuadroAtivoPorCr, type ColaboradorAtivo } from "@/lib/epi/colaboradores"
+import { codigoCr } from "@/lib/seguranca/escopo-dados"
 
 /**
  * ATRIBUIÇÃO de colaboradores a turnos.
@@ -93,6 +94,7 @@ export async function atribuirColaboradores(
             data: paraCriar.map((c) => ({
               turnoId,
               cr,
+              crCod: codigoCr(cr),
               cpfHash: c.cpfHash,
               matricula: c.matricula,
             })),

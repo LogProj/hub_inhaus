@@ -8,6 +8,7 @@ import { diaDaSemana, type DataNegocio } from "@/lib/epi/datas"
 import type { ItemChecklist } from "@/lib/epi/schemas"
 import type { EscopoUsuario } from "@/lib/epi/escopo"
 import type { UsuarioAtual } from "@/lib/epi/guardas"
+import { codigoCr } from "@/lib/seguranca/escopo-dados"
 
 /**
  * UTILIZAÇÃO DE EPIs (v2) — o LÍDER preenche o checklist por colaborador.
@@ -73,7 +74,14 @@ async function garantirSessao(turnoId: number, cr: string, dataNeg: DataNegocio)
   const sessao = await prisma.sessaoTurno.upsert({
     where: { turnoId_data: { turnoId, data: dataNeg.data } },
     update: {},
-    create: { turnoId, checklistVersaoId: versao.id, data: dataNeg.data, token: gerarToken(), status: "ABERTA" },
+    create: {
+      turnoId,
+      crCod: codigoCr(cr),
+      checklistVersaoId: versao.id,
+      data: dataNeg.data,
+      token: gerarToken(),
+      status: "ABERTA",
+    },
   })
   const vs = await prisma.checklistVersao.findUnique({ where: { id: sessao.checklistVersaoId }, select: { itens: true } })
   return { sessaoId: sessao.id, itens: (vs?.itens as unknown as ItemChecklist[]) ?? [] }
@@ -174,13 +182,22 @@ export async function registrarUtilizacao(
     ops.push(
       prisma.respostaEpi.upsert({
         where: { sessaoId_cpfHash: { sessaoId: garantida.sessaoId, cpfHash: e.cpfHash } },
-        update: { ausente: e.ausente, respostas: respostasArmazenar, conforme, nome: pessoa.nome, cargo: pessoa.cargo, cr: turno.cr },
+        update: {
+          ausente: e.ausente,
+          respostas: respostasArmazenar,
+          conforme,
+          nome: pessoa.nome,
+          cargo: pessoa.cargo,
+          cr: turno.cr,
+          crCod: codigoCr(turno.cr),
+        },
         create: {
           sessaoId: garantida.sessaoId,
           cpfHash: e.cpfHash,
           nome: pessoa.nome,
           cargo: pessoa.cargo,
           cr: turno.cr,
+          crCod: codigoCr(turno.cr),
           ausente: e.ausente,
           respostas: respostasArmazenar,
           conforme,
@@ -199,8 +216,8 @@ export async function registrarUtilizacao(
     ...ops,
     prisma.validacaoSessao.upsert({
       where: { sessaoId: garantida.sessaoId },
-      update: { authUserId: usuario.authUserId ?? "acesso-livre", nomeLider: usuario.nome ?? "—", hashConteudo, validadoEm: new Date() },
-      create: { sessaoId: garantida.sessaoId, authUserId: usuario.authUserId ?? "acesso-livre", nomeLider: usuario.nome ?? "—", hashConteudo },
+      update: { authUserId: usuario.authUserId ?? "acesso-livre", nomeLider: usuario.nome ?? "—", hashConteudo, validadoEm: new Date(), crCod: codigoCr(turno.cr) },
+      create: { sessaoId: garantida.sessaoId, crCod: codigoCr(turno.cr), authUserId: usuario.authUserId ?? "acesso-livre", nomeLider: usuario.nome ?? "—", hashConteudo },
     }),
     prisma.sessaoTurno.update({ where: { id: garantida.sessaoId }, data: { status: "VALIDADA" } }),
   ])
