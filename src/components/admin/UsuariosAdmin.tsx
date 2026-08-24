@@ -33,6 +33,9 @@ type UsuarioAdmin = {
   isAdmin: boolean
   visibleScreens: string[]
   ehSeguranca: boolean
+  classificacao: string
+  clientes: string[]
+  crs: string[]
 }
 
 type Props = {
@@ -61,6 +64,23 @@ function Conteudo({ telaOptions, meuEmail }: Props) {
   const [pagina, setPagina] = React.useState(1)
   const [criando, setCriando] = React.useState(false)
   const [editando, setEditando] = React.useState<string | null>(null)
+  const [clienteOptions, setClienteOptions] = React.useState<Opcao[]>([])
+  const [crOptions, setCrOptions] = React.useState<Opcao[]>([])
+
+  React.useEffect(() => {
+    fetch("/api/admin/clientes-crs", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { clientes: [], crs: [] }))
+      .then((d) => {
+        setClienteOptions((d.clientes ?? []).map((c: string) => ({ value: c, label: c })))
+        setCrOptions(
+          (d.crs ?? []).map((x: { cr: string; descricao: string | null; cliente: string | null }) => ({
+            value: x.cr,
+            label: `${x.cr} · ${x.descricao ?? x.cliente ?? ""}`.trim(),
+          })),
+        )
+      })
+      .catch(() => {})
+  }, [])
 
   const carregar = React.useCallback(async () => {
     setCarregando(true)
@@ -127,6 +147,8 @@ function Conteudo({ telaOptions, meuEmail }: Props) {
       {criando && (
         <FormularioCriar
           telaOptions={telaOptions}
+          clienteOptions={clienteOptions}
+          crOptions={crOptions}
           onCancelar={() => setCriando(false)}
           onCriado={() => {
             setCriando(false)
@@ -207,6 +229,8 @@ function Conteudo({ telaOptions, meuEmail }: Props) {
                             <EditorAcesso
                               usuario={u}
                               telaOptions={telaOptions}
+                              clienteOptions={clienteOptions}
+                              crOptions={crOptions}
                               ehEuMesmo={!!meuEmail && meuEmail.toLowerCase() === u.email.toLowerCase()}
                               onSalvo={() => {
                                 setEditando(null)
@@ -257,10 +281,14 @@ function Selo({ on, rotuloOn, rotuloOff }: { on: boolean; rotuloOn: string; rotu
 
 function FormularioCriar({
   telaOptions,
+  clienteOptions,
+  crOptions,
   onCancelar,
   onCriado,
 }: {
   telaOptions: Opcao[]
+  clienteOptions: Opcao[]
+  crOptions: Opcao[]
   onCancelar: () => void
   onCriado: () => void
 }) {
@@ -272,9 +300,18 @@ function FormularioCriar({
   const [isAdmin, setIsAdmin] = React.useState(false)
   const [seguranca, setSeguranca] = React.useState(false)
   const [telas, setTelas] = React.useState<string[]>([])
+  const [classificacao, setClassificacao] = React.useState<"INTERNO" | "CLIENTE">("INTERNO")
+  const [clientes, setClientes] = React.useState<string[]>([])
+  const [crs, setCrs] = React.useState<string[]>([])
   const [ocupado, setOcupado] = React.useState(false)
 
-  const podeSalvar = nome.trim() && email.trim() && cpf.replace(/\D/g, "").length === 11 && senha.length >= 8
+  const escopoOk = classificacao !== "CLIENTE" || clientes.length > 0 || crs.length > 0
+  const podeSalvar =
+    nome.trim() && email.trim() && cpf.replace(/\D/g, "").length === 11 && senha.length >= 8 && escopoOk
+
+  React.useEffect(() => {
+    if (classificacao === "CLIENTE" && isAdmin) setIsAdmin(false)
+  }, [classificacao, isAdmin])
 
   async function salvar() {
     setOcupado(true)
@@ -282,7 +319,19 @@ function FormularioCriar({
       const r = await fetch("/api/admin/usuarios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: nome, email, cpf, password: senha, isAdmin, seguranca, hasAccess: true, visibleScreens: telas }),
+        body: JSON.stringify({
+          name: nome,
+          email,
+          cpf,
+          password: senha,
+          isAdmin,
+          seguranca,
+          hasAccess: true,
+          visibleScreens: telas,
+          classificacao,
+          clientes,
+          crs,
+        }),
       })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error ?? "Falha ao cadastrar")
@@ -324,9 +373,47 @@ function FormularioCriar({
           />
           <p className="mt-1.5 text-xs text-muted-foreground">Administradores veem todas as telas.</p>
         </Campo>
+        <Campo rotulo="Classificação">
+          <select
+            value={classificacao}
+            onChange={(e) => setClassificacao(e.target.value as "INTERNO" | "CLIENTE")}
+            className="h-9 w-full rounded-lg border border-navy/15 bg-white px-3 text-sm text-navy"
+          >
+            <option value="INTERNO">Interno (equipe In-Haus)</option>
+            <option value="CLIENTE">Cliente (externo, escopo travado)</option>
+          </select>
+        </Campo>
+        <Campo rotulo="Clientes (escopo de dados)">
+          <MultiCombobox
+            values={clientes}
+            onChange={setClientes}
+            options={clienteOptions}
+            placeholder="Escolha os clientes…"
+            ariaLabel="Clientes"
+          />
+        </Campo>
+        <Campo rotulo="CRs avulsos (escopo)">
+          <MultiCombobox
+            values={crs}
+            onChange={setCrs}
+            options={crOptions}
+            placeholder="Escolha os CRs…"
+            ariaLabel="CRs"
+          />
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            CRs efetivos: {crs.length} avulso(s), {clientes.length} cliente(s)
+          </p>
+        </Campo>
         <div className="flex flex-col justify-end gap-2">
-          <label className="flex items-center gap-2 text-sm text-navy">
-            <Checkbox checked={isAdmin} onCheckedChange={(v) => setIsAdmin(!!v)} />
+          <label
+            className={cn("flex items-center gap-2 text-sm text-navy", classificacao === "CLIENTE" && "opacity-50")}
+            title={classificacao === "CLIENTE" ? "Usuário CLIENTE não pode ser administrador" : undefined}
+          >
+            <Checkbox
+              checked={isAdmin}
+              disabled={classificacao === "CLIENTE"}
+              onCheckedChange={(v) => setIsAdmin(!!v)}
+            />
             É administrador (vê tudo e gerencia usuários)
           </label>
           <label className="flex items-center gap-2 text-sm text-navy">
@@ -348,11 +435,15 @@ function FormularioCriar({
 function EditorAcesso({
   usuario,
   telaOptions,
+  clienteOptions,
+  crOptions,
   ehEuMesmo,
   onSalvo,
 }: {
   usuario: UsuarioAdmin
   telaOptions: Opcao[]
+  clienteOptions: Opcao[]
+  crOptions: Opcao[]
   ehEuMesmo: boolean
   onSalvo: () => void
 }) {
@@ -361,7 +452,18 @@ function EditorAcesso({
   const [isAdmin, setIsAdmin] = React.useState(usuario.isAdmin)
   const [seguranca, setSeguranca] = React.useState(usuario.ehSeguranca)
   const [telas, setTelas] = React.useState<string[]>(usuario.visibleScreens)
+  const [classificacao, setClassificacao] = React.useState<"INTERNO" | "CLIENTE">(
+    (usuario.classificacao as "INTERNO" | "CLIENTE") ?? "INTERNO",
+  )
+  const [clientes, setClientes] = React.useState<string[]>(usuario.clientes ?? [])
+  const [crs, setCrs] = React.useState<string[]>(usuario.crs ?? [])
   const [ocupado, setOcupado] = React.useState(false)
+
+  const escopoOk = classificacao !== "CLIENTE" || clientes.length > 0 || crs.length > 0
+
+  React.useEffect(() => {
+    if (classificacao === "CLIENTE" && isAdmin) setIsAdmin(false)
+  }, [classificacao, isAdmin])
 
   async function salvar() {
     setOcupado(true)
@@ -377,6 +479,9 @@ function EditorAcesso({
           isAdmin,
           seguranca,
           visibleScreens: telas,
+          classificacao,
+          clientes,
+          crs,
         }),
       })
       const d = await r.json()
@@ -397,8 +502,15 @@ function EditorAcesso({
           <Checkbox checked={hasAccess} disabled={ehEuMesmo} onCheckedChange={(v) => setHasAccess(!!v)} />
           Tem acesso ao hub
         </label>
-        <label className="flex items-center gap-2 text-sm text-navy">
-          <Checkbox checked={isAdmin} disabled={ehEuMesmo} onCheckedChange={(v) => setIsAdmin(!!v)} />
+        <label
+          className={cn("flex items-center gap-2 text-sm text-navy", classificacao === "CLIENTE" && "opacity-50")}
+          title={classificacao === "CLIENTE" ? "Usuário CLIENTE não pode ser administrador" : undefined}
+        >
+          <Checkbox
+            checked={isAdmin}
+            disabled={ehEuMesmo || classificacao === "CLIENTE"}
+            onCheckedChange={(v) => setIsAdmin(!!v)}
+          />
           Administrador
         </label>
         <label
@@ -429,8 +541,49 @@ function EditorAcesso({
           <p className="mt-1.5 text-xs text-muted-foreground">Como administrador, este usuário vê todas as telas.</p>
         )}
       </div>
+      <div className="mt-3 grid gap-4 sm:grid-cols-3">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-navy">Classificação</label>
+          <select
+            value={classificacao}
+            onChange={(e) => setClassificacao(e.target.value as "INTERNO" | "CLIENTE")}
+            className="h-9 w-full rounded-lg border border-navy/15 bg-white px-3 text-sm text-navy"
+          >
+            <option value="INTERNO">Interno (equipe In-Haus)</option>
+            <option value="CLIENTE">Cliente (externo, escopo travado)</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-navy">Clientes (escopo de dados)</label>
+          <MultiCombobox
+            values={clientes}
+            onChange={setClientes}
+            options={clienteOptions}
+            placeholder="Escolha os clientes…"
+            ariaLabel="Clientes"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-navy">CRs avulsos (escopo)</label>
+          <MultiCombobox
+            values={crs}
+            onChange={setCrs}
+            options={crOptions}
+            placeholder="Escolha os CRs…"
+            ariaLabel="CRs"
+          />
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            CRs efetivos: {crs.length} avulso(s), {clientes.length} cliente(s)
+          </p>
+        </div>
+      </div>
+      {!escopoOk && (
+        <p className="mt-2 text-xs text-amber-700">
+          Usuário CLIENTE precisa de ao menos um cliente ou CR vinculado.
+        </p>
+      )}
       <div className="mt-4 flex items-center justify-end">
-        <Button type="button" variant="gradient" size="sm" onClick={salvar} disabled={ocupado}>
+        <Button type="button" variant="gradient" size="sm" onClick={salvar} disabled={ocupado || !escopoOk}>
           {ocupado ? "Salvando…" : "Salvar acesso"}
         </Button>
       </div>
