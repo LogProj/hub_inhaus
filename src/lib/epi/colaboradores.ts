@@ -1,5 +1,6 @@
 import { inhausPool } from "@/lib/db-inhaus"
 import { hmacCpf } from "@/lib/epi/cpf"
+import { codigoCr, type EscopoDados } from "@/lib/seguranca/escopo-dados"
 
 /**
  * QUADRO ATIVO de colaboradores para o módulo de EPI.
@@ -44,7 +45,16 @@ async function mesReferenciaAtual(): Promise<string | null> {
  * Lista os colaboradores ATIVOS de um CR (quadro atual, dt_demissao IS NULL).
  * Calcula o `cpfHash` de cada um no servidor — o CPF em claro não sai daqui.
  */
-export async function getQuadroAtivoPorCr(cr: string): Promise<ColaboradorAtivo[]> {
+export async function getQuadroAtivoPorCr(
+  cr: string,
+  escopo: EscopoDados = { tipo: "todos" },
+): Promise<ColaboradorAtivo[]> {
+  // Barreira de dados: se o usuário tem escopo restrito e o CR pedido não está
+  // nele, não devolve ninguém (defesa em profundidade — a rota já é de Segurança).
+  if (escopo.tipo === "lista") {
+    const cod = codigoCr(cr)
+    if (!cod || !escopo.crs.includes(cod)) return []
+  }
   const r = await inhausPool.query(
     `select cpf, nome, descricao_funcao, matricula
        from ft_colaboradores_sra
