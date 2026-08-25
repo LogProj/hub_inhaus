@@ -17,8 +17,33 @@ export type FiltroDesvios = {
   clienteFinal?: string | null
   tipo?: string | null
   busca?: string | null
+  /** Mês da data de ocorrência no formato "YYYY-MM". */
+  mes?: string | null
   pagina: number
   porPagina: number
+}
+
+/** Intervalo [gte, lt) de um mês "YYYY-MM". Null se inválido. */
+export function rangeDoMes(mes: string | null | undefined): { gte: Date; lt: Date } | null {
+  if (!mes || !/^\d{4}-\d{2}$/.test(mes)) return null
+  const [ano, m] = mes.split("-").map(Number)
+  if (m < 1 || m > 12) return null
+  const gte = new Date(Date.UTC(ano, m - 1, 1))
+  const lt = new Date(Date.UTC(m === 12 ? ano + 1 : ano, m === 12 ? 0 : m, 1))
+  return { gte, lt }
+}
+
+/** Meses (YYYY-MM) com desvios no escopo, do mais recente ao mais antigo. */
+export async function mesesDisponiveis(escopo: EscopoContratante): Promise<string[]> {
+  if (escopo.tipo === "lista" && escopo.ids.length === 0) return []
+  const linhas = await prisma.$queryRaw<{ mes: string }[]>`
+    select distinct to_char(data_ocorrencia, 'YYYY-MM') as mes
+    from desvio
+    where data_ocorrencia is not null
+      ${escopo.tipo === "lista" ? Prisma.sql`and contratante_id = any(${escopo.ids}::int[])` : Prisma.empty}
+    order by mes desc
+  `
+  return linhas.map((l) => l.mes)
 }
 
 /** Lista paginada, já recortada pelo escopo (Trava 1) e conferida (Trava 2). */
@@ -34,6 +59,8 @@ export async function listarDesvios(
   if (filtro.status) where.status = filtro.status
   if (filtro.clienteFinal) where.clienteFinal = filtro.clienteFinal
   if (filtro.tipo) where.tipo = filtro.tipo
+  const rangeMes = rangeDoMes(filtro.mes)
+  if (rangeMes) where.dataOcorrencia = { gte: rangeMes.gte, lt: rangeMes.lt }
   if (filtro.busca) {
     where.OR = [
       { numeroOtbWbs: { contains: filtro.busca, mode: "insensitive" } },
@@ -54,12 +81,16 @@ export async function listarDesvios(
   return { itens, total }
 }
 
-/** Contadores por status, no escopo. */
+/** Contadores por status, no escopo (opcionalmente recortado por mês YYYY-MM). */
 export async function contarPorStatus(
   escopo: EscopoContratante,
+  mes?: string | null,
 ): Promise<Record<string, number>> {
   if (escopo.tipo === "lista" && escopo.ids.length === 0) return {}
-  const where = escopo.tipo === "lista" ? { contratanteId: { in: escopo.ids } } : {}
+  const where: Record<string, unknown> =
+    escopo.tipo === "lista" ? { contratanteId: { in: escopo.ids } } : {}
+  const rangeMes = rangeDoMes(mes)
+  if (rangeMes) where.dataOcorrencia = { gte: rangeMes.gte, lt: rangeMes.lt }
   const grupos = await prisma.desvio.groupBy({
     by: ["status"],
     _count: { _all: true },
@@ -183,10 +214,22 @@ function contagensDe(
     .sort((a, b) => b.total - a.total)
 }
 
-/** Painel de indicadores dos desvios no escopo do usuário. */
-export async function indicadoresDesvios(escopo: EscopoContratante): Promise<IndicadoresDesvios> {
-  const where = whereEscopo(escopo)
-  if (where === null) return VAZIO
+/**
+ * Painel de indicadores dos desvios no escopo do usuário. Quando `mes` (YYYY-MM) é
+ * informado, TODOS os números respeitam o mês — EXCETO a evolução por mês (`porMes`),
+ * que mostra sempre o histórico completo (senão o gráfico de tendência ficaria com um
+ * ponto só).
+ */
+export async function indicadoresDesvios(
+  escopo: EscopoContratante,
+  mes?: string | null,
+): Promise<IndicadoresDesvios> {
+  const whereBase = whereEscopo(escopo)
+  if (whereBase === null) return VAZIO
+  const rangeMes = rangeDoMes(mes)
+  const where = rangeMes
+    ? { ...whereBase, dataOcorrencia: { gte: rangeMes.gte, lt: rangeMes.lt } }
+    : whereBase
 
   const [total, porStatusRaw, somaTotal, somaPendente, motivos, causas, clientes, tipos, meses] =
     await Promise.all([

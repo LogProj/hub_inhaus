@@ -400,3 +400,18 @@ model Desvio {
   @@index([status])
   @@map("desvio")
 }
+
+// Opção customizada de uma lista do formulário de desvio, por contratante. Os valores
+// PADRÃO ficam no código (src/lib/desvios/opcoes.ts); aqui só os EXTRAS que o admin
+// cadastra. `campo` ∈ tipo|motivo|causaRaiz|responsavelInterno|divisao.
+model DesvioOpcao {
+  id            Int      @id @default(autoincrement())
+  contratanteId Int      @map("contratante_id")
+  campo         String
+  valor         String
+  criadoEm      DateTime @default(now()) @map("criado_em")
+
+  @@unique([contratanteId, campo, valor])
+  @@index([contratanteId, campo])
+  @@map("desvio_opcao")
+}

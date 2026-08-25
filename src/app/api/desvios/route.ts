@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server"
 import { escopoContratanteAtual } from "@/lib/desvios/escopo-usuario"
-import { listarDesvios, contarPorStatus, criarDesvio, contratanteAtlasId } from "@/lib/desvios"
+import {
+  listarDesvios,
+  contarPorStatus,
+  criarDesvio,
+  contratanteAtlasId,
+  mesesDisponiveis,
+} from "@/lib/desvios"
 import { criarDesvioSchema } from "@/lib/desvios/schemas"
 
 export const dynamic = "force-dynamic"
@@ -10,18 +16,28 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const pagina = Math.max(1, Number(url.searchParams.get("pagina") ?? "1") || 1)
   const porPagina = Math.min(100, Math.max(10, Number(url.searchParams.get("porPagina") ?? "20") || 20))
+  // Mês (YYYY-MM): sem valor explícito, usa o mais recente com dados; "todos" = sem filtro.
+  const meses = await mesesDisponiveis(escopo)
+  const pedidoMes = url.searchParams.get("mes")
+  const mes =
+    pedidoMes === "todos"
+      ? null
+      : pedidoMes && meses.includes(pedidoMes)
+        ? pedidoMes
+        : (meses[0] ?? null)
   const [lista, contadores] = await Promise.all([
     listarDesvios(escopo, {
       status: url.searchParams.get("status"),
       clienteFinal: url.searchParams.get("cliente"),
       tipo: url.searchParams.get("tipo"),
       busca: url.searchParams.get("busca"),
+      mes,
       pagina,
       porPagina,
     }),
-    contarPorStatus(escopo),
+    contarPorStatus(escopo, mes),
   ])
-  return NextResponse.json({ ...lista, contadores, pagina, porPagina })
+  return NextResponse.json({ ...lista, contadores, pagina, porPagina, meses, mes })
 }
 
 export async function POST(request: Request) {
