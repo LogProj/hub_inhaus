@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 import {
   LayoutDashboard,
   UserCog,
@@ -12,12 +13,14 @@ import {
   ClipboardCheck,
   ListChecks,
   Activity,
+  ChevronDown,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { InhausLogo } from "@/components/brand/InhausLogo"
-import { DOMINIOS, TELA_HOME } from "@/lib/domains"
+import { DOMINIOS, TELA_HOME, clientesVisiveis } from "@/lib/domains"
 
 type NavItem = {
   href: string
@@ -45,9 +48,11 @@ const GRUPO_GERAL: NavGroup = {
 // nenhuma tela pronta são omitidos.
 // `visibleScreens` (null = mostra tudo, ex.: admin/dev) restringe as telas de cada
 // domínio às concedidas ao usuário — ver src/lib/dashboard-acesso.ts.
+// Domínios com subnível de clientes (área Clientes) NÃO entram aqui — são
+// renderizados como accordion aninhado (Clientes → cliente → telas), mais abaixo.
 function gruposDominio(visibleScreens: string[] | null): NavGroup[] {
   const permitidas = visibleScreens ? new Set(visibleScreens) : null
-  return DOMINIOS.map((dominio) => ({
+  return DOMINIOS.filter((dominio) => !dominio.clientes?.length).map((dominio) => ({
     title: dominio.label,
     icon: dominio.icone,
     items: dominio.telas
@@ -128,12 +133,74 @@ export function DashboardSidebar({
         : []),
     ],
   }
-  const grupos = [
-    grupoGeral,
-    ...gruposDominio(visibleScreens),
+  // Grupos planos (domínios internos) vêm antes; EPI/Admin depois. A área Clientes
+  // (accordion aninhado) é renderizada ENTRE os dois, preservando a ordem original.
+  const gruposPrincipais: NavGroup[] = [grupoGeral, ...gruposDominio(visibleScreens)]
+  const gruposFinais: NavGroup[] = [
     ...(grupoEpiAtual ? [grupoEpiAtual] : []),
     ...(isAdmin ? [GRUPO_ADMIN] : []),
   ]
+
+  // Domínios com subnível de clientes que têm ao menos um cliente visível ao usuário.
+  const dominiosClientes = DOMINIOS.map((dominio) => ({
+    dominio,
+    clientes: clientesVisiveis(dominio, visibleScreens),
+  })).filter((d) => d.clientes.length > 0)
+
+  // Estado do accordion: qual seção (domínio Clientes) e qual cliente estão abertos.
+  // Um cliente aberto por vez. Ao navegar para uma tela de cliente, abre a seção e o
+  // cliente correspondentes automaticamente.
+  const [secaoAberta, setSecaoAberta] = useState<string | null>(null)
+  const [clienteAberto, setClienteAberto] = useState<string | null>(null)
+  useEffect(() => {
+    for (const { dominio, clientes } of dominiosClientes) {
+      for (const cliente of clientes) {
+        if (cliente.telas.some((tela) => tela.href === pathname)) {
+          setSecaoAberta(dominio.key)
+          setClienteAberto(cliente.key)
+          return
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
+  const renderGrupo = (group: NavGroup) => (
+    <div key={group.title}>
+      <p className="flex items-center gap-1.5 px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+        {group.icon && <group.icon className="h-3 w-3" />}
+        {group.title}
+      </p>
+      <ul className="space-y-1">
+        {group.items.map((item) => {
+          const active = pathname === item.href
+          const ItemIcon = item.icon ?? LayoutDashboard
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                onClick={onNavigate}
+                className={cn(
+                  "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                  active
+                    ? "bg-inhaus-grad text-white shadow-[0_10px_24px_-12px_rgba(0,36,67,0.7)]"
+                    : "text-foreground/75 hover:bg-teal-tint hover:text-teal",
+                )}
+              >
+                <ItemIcon
+                  className={cn(
+                    "h-[18px] w-[18px] shrink-0 transition-transform",
+                    !active && "group-hover:scale-110",
+                  )}
+                />
+                <span className="flex-1">{item.label}</span>
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
 
   return (
     <div className="flex h-full flex-col gap-6 px-4 py-6">
@@ -150,46 +217,93 @@ export function DashboardSidebar({
       </Link>
 
       <nav className="flex flex-1 flex-col gap-6 overflow-y-auto">
-        {grupos.map((group) => (
-          <div key={group.title}>
-            <p className="flex items-center gap-1.5 px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
-              {group.icon && <group.icon className="h-3 w-3" />}
-              {group.title}
-            </p>
-            <ul className="space-y-1">
-              {group.items.map((item) => {
-                const active = pathname === item.href
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={onNavigate}
-                      className={cn(
-                        "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
-                        active
-                          ? "bg-inhaus-grad text-white shadow-[0_10px_24px_-12px_rgba(0,36,67,0.7)]"
-                          : "text-foreground/75 hover:bg-teal-tint hover:text-teal",
-                      )}
-                    >
-                      {(() => {
-                        const ItemIcon = item.icon ?? LayoutDashboard
-                        return (
-                          <ItemIcon
-                            className={cn(
-                              "h-[18px] w-[18px] shrink-0 transition-transform",
-                              !active && "group-hover:scale-110",
-                            )}
-                          />
-                        )
-                      })()}
-                      <span className="flex-1">{item.label}</span>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        ))}
+        {gruposPrincipais.map(renderGrupo)}
+
+        {/* Área Clientes — accordion aninhado: seção → cliente → telas. Só aparecem
+            os clientes cujas telas foram concedidas ao usuário (Eixo 1). */}
+        {dominiosClientes.map(({ dominio, clientes }) => {
+          const aberta = secaoAberta === dominio.key
+          const SecaoIcon = dominio.icone
+          return (
+            <div key={dominio.key}>
+              <button
+                type="button"
+                onClick={() => setSecaoAberta((atual) => (atual === dominio.key ? null : dominio.key))}
+                aria-expanded={aberta}
+                className="flex w-full items-center gap-1.5 px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 transition-colors hover:text-teal"
+              >
+                <SecaoIcon className="h-3 w-3" />
+                <span className="flex-1 text-left">{dominio.label}</span>
+                {aberta ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              </button>
+
+              {aberta && (
+                <ul className="space-y-1">
+                  {clientes.map((cliente) => {
+                    const clienteExpandido = clienteAberto === cliente.key
+                    const ClienteIcon = cliente.icone ?? LayoutDashboard
+                    return (
+                      <li key={cliente.key}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setClienteAberto((atual) => (atual === cliente.key ? null : cliente.key))
+                          }
+                          aria-expanded={clienteExpandido}
+                          className={cn(
+                            "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                            "text-foreground/75 hover:bg-teal-tint hover:text-teal",
+                          )}
+                        >
+                          <ClienteIcon className="h-[18px] w-[18px] shrink-0 transition-transform group-hover:scale-110" />
+                          <span className="flex-1 text-left">{cliente.label}</span>
+                          {clienteExpandido ? (
+                            <ChevronDown className="h-4 w-4 shrink-0" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 shrink-0" />
+                          )}
+                        </button>
+
+                        {clienteExpandido && (
+                          <ul className="mt-1 space-y-1 border-l border-navy/10 pl-3">
+                            {cliente.telas.map((tela) => {
+                              const active = pathname === tela.href
+                              const TelaIcon = tela.icone ?? LayoutDashboard
+                              return (
+                                <li key={tela.href}>
+                                  <Link
+                                    href={tela.href}
+                                    onClick={onNavigate}
+                                    className={cn(
+                                      "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all",
+                                      active
+                                        ? "bg-inhaus-grad text-white shadow-[0_10px_24px_-12px_rgba(0,36,67,0.7)]"
+                                        : "text-foreground/75 hover:bg-teal-tint hover:text-teal",
+                                    )}
+                                  >
+                                    <TelaIcon
+                                      className={cn(
+                                        "h-[18px] w-[18px] shrink-0 transition-transform",
+                                        !active && "group-hover:scale-110",
+                                      )}
+                                    />
+                                    <span className="flex-1">{tela.label}</span>
+                                  </Link>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          )
+        })}
+
+        {gruposFinais.map(renderGrupo)}
       </nav>
 
       <div className="mt-auto border-t border-navy/10 pt-4">

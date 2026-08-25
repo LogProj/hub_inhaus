@@ -40,11 +40,25 @@ export type Tela = {
   icone?: LucideIcon
 }
 
+/**
+ * Cliente contratante dentro da área "Clientes" — agrupa as telas daquele cliente.
+ * Só a área Clientes usa este nível extra (sidebar aninhada: Clientes → cliente →
+ * telas). O `key` casa com o slug do contratante (ex.: "atlas").
+ */
+export type ClienteHub = {
+  key: string
+  label: string
+  icone?: LucideIcon
+  telas: Tela[]
+}
+
 export type Dominio = {
   key: string
   label: string
   icone: LucideIcon
   telas: Tela[]
+  /** Só a área Clientes: subnível de clientes contratantes, cada um com suas telas. */
+  clientes?: ClienteHub[]
 }
 
 export const DOMINIOS: Dominio[] = [
@@ -209,26 +223,41 @@ export const DOMINIOS: Dominio[] = [
     key: "clientes",
     label: "Clientes",
     icone: Building2,
-    telas: [
+    // A área Clientes não tem telas soltas: cada cliente contratante agrupa as suas.
+    telas: [],
+    clientes: [
       {
-        key: "desvios-acompanhamento",
-        label: "Acompanhamento de Desvios",
-        href: "/dashboards/clientes/atlas/desvios",
-        palavrasChave: ["atlas", "ocorrencia", "desvio", "tratativa", "gps"],
-        icone: FileWarning,
-      },
-      {
-        key: "desvios-formulario",
-        label: "Formulário de Desvios",
-        href: "/dashboards/clientes/atlas/desvios/novo",
-        palavrasChave: ["atlas", "novo desvio", "lancar ocorrencia"],
-        icone: ListPlus,
+        key: "atlas",
+        label: "Atlas Copco",
+        icone: Building2,
+        telas: [
+          {
+            key: "desvios-acompanhamento",
+            label: "Acompanhamento de Desvios",
+            href: "/dashboards/clientes/atlas/desvios",
+            palavrasChave: ["atlas", "ocorrencia", "desvio", "tratativa", "gps"],
+            icone: FileWarning,
+          },
+          {
+            key: "desvios-formulario",
+            label: "Formulário de Desvios",
+            href: "/dashboards/clientes/atlas/desvios/novo",
+            palavrasChave: ["atlas", "novo desvio", "lancar ocorrencia"],
+            icone: ListPlus,
+          },
+        ],
       },
     ],
   },
 ]
 
-export type TelaComDominio = Tela & { dominioKey: string; dominioLabel: string }
+export type TelaComDominio = Tela & {
+  dominioKey: string
+  dominioLabel: string
+  /** Preenchido só para telas dentro de um cliente contratante (área Clientes). */
+  clienteKey?: string
+  clienteLabel?: string
+}
 
 /** A Home não pertence a domínio nenhum: é o painel de entrada. */
 export const TELA_HOME: TelaComDominio = {
@@ -243,14 +272,56 @@ export const TELA_HOME: TelaComDominio = {
 
 export const TODAS_AS_TELAS: TelaComDominio[] = [
   TELA_HOME,
-  ...DOMINIOS.flatMap((dominio) =>
-    dominio.telas.map((tela) => ({
+  ...DOMINIOS.flatMap((dominio) => [
+    ...dominio.telas.map((tela) => ({
       ...tela,
       dominioKey: dominio.key,
       dominioLabel: dominio.label,
     })),
-  ),
+    // Telas aninhadas por cliente (área Clientes) também entram na fonte de verdade:
+    // valem para permissões (visibleScreens), busca e guard de rota.
+    ...(dominio.clientes ?? []).flatMap((cliente) =>
+      cliente.telas.map((tela) => ({
+        ...tela,
+        dominioKey: dominio.key,
+        dominioLabel: dominio.label,
+        clienteKey: cliente.key,
+        clienteLabel: cliente.label,
+      })),
+    ),
+  ]),
 ]
+
+/** Um cliente com apenas as telas prontas e concedidas ao usuário. */
+export type ClienteHubVisivel = {
+  key: string
+  label: string
+  icone?: LucideIcon
+  telas: Tela[]
+}
+
+/**
+ * Clientes de um domínio (área Clientes) com as telas filtradas: sem `emBreve` e só
+ * as concedidas (`visibleScreens`; null = admin/dev vê tudo). Clientes sem nenhuma
+ * tela visível são omitidos — assim o cliente só aparece quando o usuário tem tela
+ * dele.
+ */
+export function clientesVisiveis(
+  dominio: Dominio,
+  visibleScreens: string[] | null,
+): ClienteHubVisivel[] {
+  const permitidas = visibleScreens ? new Set(visibleScreens) : null
+  return (dominio.clientes ?? [])
+    .map((cliente) => ({
+      key: cliente.key,
+      label: cliente.label,
+      icone: cliente.icone,
+      telas: cliente.telas
+        .filter((tela) => !tela.emBreve)
+        .filter((tela) => permitidas === null || permitidas.has(tela.key)),
+    }))
+    .filter((cliente) => cliente.telas.length > 0)
+}
 
 /** Remove acento e caixa: a busca não pode exigir digitação perfeita. */
 function normalizar(texto: string): string {
