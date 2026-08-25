@@ -189,7 +189,7 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
   return (
     <div
       ref={containerRef}
-      className={`space-y-6 bg-mist ${tela ? "min-h-screen overflow-y-auto p-6" : "p-1"}`}
+      className={`space-y-6 bg-navy-mist ${tela ? "min-h-screen overflow-y-auto p-6" : "p-1"}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
