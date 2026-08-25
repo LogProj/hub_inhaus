@@ -28,7 +28,7 @@
   "causaRaiz": "Falha na Sep/Conf",
   "resumoCaso": "Realizamos o envio da OTB faltando uma HU, a mesma encontra-se na LOG sem saldo sistêmico, uma vez que faturamos porém não expedimos. Não enviamos uma das HU's solicitadas 1032397288",
   "solucao": "1° Devolução\n2° Item que deixou de seguir",
-  "status": "SIM",
+  "status": "CONCLUIDA",
   "dataFaturamento": "2026-04-10",
   "dataSeparacao": null,
   "valor": null
@@ -45,7 +45,7 @@
   "causaRaiz": "Divergencia de Estoque",
   "resumoCaso": "Material PN 2050485133 apresenta déficit em nosso estoque, com divergências registradas desde outubro de 2025",
   "solucao": "1° Movimentação para o 1040\n2° Nova compra de material",
-  "status": "SIM",
+  "status": "CONCLUIDA",
   "dataFaturamento": null,
   "dataSeparacao": null,
   "valor": null
@@ -79,7 +79,7 @@
   "causaRaiz": "Divergencia de Estoque",
   "resumoCaso": "1280275160\n1280173413",
   "solucao": "1° Movimentação para o 1040\n2° Reconferir o estoque\n3° Nova compra de material",
-  "status": "NAO",
+  "status": "PENDENTE",
   "dataFaturamento": null,
   "dataSeparacao": null,
   "valor": 551.0
@@ -96,7 +96,7 @@
   "causaRaiz": "Falha na Sep/Conf",
   "resumoCaso": "Enviamos o material de forma coesa com o PN, porém faltando 1 unidade do mesmo, que permaneceu em estoque. PN 8436094020",
   "solucao": "1° Devolução\n2° Item que deixou de seguir",
-  "status": "NAO",
+  "status": "PENDENTE",
   "dataFaturamento": "2026-04-17",
   "dataSeparacao": null,
   "valor": 7022.46
@@ -113,7 +113,7 @@
   "causaRaiz": "Falha na Sep/Conf",
   "resumoCaso": "Enviamos o material 8436282002, porém a solicitação era proveniente do PN 8436280002",
   "solucao": "1° Devolução\n2° Envio em outro projeto do cliente\n3° Item que deixou de seguir",
-  "status": "NAO",
+  "status": "PENDENTE",
   "dataFaturamento": "2026-02-12",
   "dataSeparacao": "2026-02-12",
   "valor": 7961.2
@@ -130,7 +130,7 @@
   "causaRaiz": "Divergencia de Estoque",
   "resumoCaso": "Não tínhamos o material solicitado no almoxarife, para atender o cliente mandamos o mesmo material apenas com alguns metros a mais que não estava registrado em sistema",
   "solucao": "-",
-  "status": "SIM",
+  "status": "CONCLUIDA",
   "dataFaturamento": null,
   "dataSeparacao": null,
   "valor": null
@@ -147,7 +147,7 @@
   "causaRaiz": "Divergencia de Estoque",
   "resumoCaso": "Material chegou dia 17.04, por meio da BP 7670, vinculado a PO 4516463632, porém não foi localizado em estoque, mas foi bipado na conferência de recebimento",
   "solucao": "1° Movimentação para o 1040\n2° Reconferir o estoque\n3° Nova compra de material",
-  "status": "NAO",
+  "status": "PENDENTE",
   "dataFaturamento": null,
   "dataSeparacao": null,
   "valor": 588.34
@@ -164,7 +164,7 @@
   "causaRaiz": "Divergencia de Estoque",
   "resumoCaso": "1280026468\n1280876524",
   "solucao": "1° Movimentação para o 1040\n2° Reconferir o estoque\n3° Nova compra de material",
-  "status": "NAO",
+  "status": "PENDENTE",
   "dataFaturamento": null,
   "dataSeparacao": null,
   "valor": 336.2
@@ -181,7 +181,7 @@
   "causaRaiz": "Divergencia de Estoque",
   "resumoCaso": "Material chegou dia 10/04, por meio do BP 7598 ISRA, vinculado à PO 4516385622, com peso aproximado de 400 g, porém não foi localizado em estoque",
   "solucao": "1° Movimentação para o 1040\n2° Reconferir o estoque\n3° Nova compra de material",
-  "status": "NAO",
+  "status": "PENDENTE",
   "dataFaturamento": null,
   "dataSeparacao": null,
   "valor": 12338.96
@@ -215,7 +215,7 @@
   "causaRaiz": "Falha na Sep/Conf",
   "resumoCaso": "Enviamos o material 8436280002, porém a solicitação era proveniente do PN 8436282002",
   "solucao": "1° Devolução\n2° Envio em outro projeto do cliente\n3° Item que deixou de seguir",
-  "status": "SIM",
+  "status": "CONCLUIDA",
   "dataFaturamento": "2025-12-02",
   "dataSeparacao": "2026-11-27",
   "valor": 9136.8

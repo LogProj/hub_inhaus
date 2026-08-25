@@ -19,14 +19,14 @@ export const criarDesvioSchema = z.object({
   causaRaiz: z.string().trim().optional().nullable(),
   resumoCaso: z.string().trim().optional().nullable(),
   solucao: z.string().trim().optional().nullable(),
-  status: z.enum(["EM_TRATATIVA", "NAO", "SIM"]).default("EM_TRATATIVA"),
+  status: z.enum(["EM_TRATATIVA", "PENDENTE", "CONCLUIDA"]).default("EM_TRATATIVA"),
   dataFaturamento: dataOpcional,
   dataSeparacao: dataOpcional,
   valor: z.number().nonnegative().optional().nullable(),
 })
 
 export const atualizarDesvioSchema = criarDesvioSchema.partial().extend({
-  status: z.enum(["EM_TRATATIVA", "NAO", "SIM"]).optional(),
+  status: z.enum(["EM_TRATATIVA", "PENDENTE", "CONCLUIDA"]).optional(),
 })
 
 export type CriarDesvioInput = z.infer<typeof criarDesvioSchema>

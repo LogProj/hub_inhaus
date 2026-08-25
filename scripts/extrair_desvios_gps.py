@@ -17,9 +17,9 @@ CAMINHO_PADRAO = (
 def status_do_texto(t):
     s = (str(t).strip().lower()) if t is not None else ""
     if s == "sim":
-        return "SIM"
+        return "CONCLUIDA"
     if s in ("não", "nao"):
-        return "NAO"
+        return "PENDENTE"
     return "EM_TRATATIVA"
 
 
