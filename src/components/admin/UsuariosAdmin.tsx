@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { MultiCombobox } from "@/components/ui/MultiCombobox"
+import { SeletorTelas } from "@/components/admin/SeletorTelas"
 import { ToastProvider, useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 
@@ -40,7 +41,6 @@ type UsuarioAdmin = {
 }
 
 type Props = {
-  telaOptions: Opcao[]
   meuEmail: string | null
   globalConfigurado: boolean
 }
@@ -55,7 +55,7 @@ export function UsuariosAdmin(props: Props) {
   )
 }
 
-function Conteudo({ telaOptions, meuEmail }: Props) {
+function Conteudo({ meuEmail }: Props) {
   const { sucesso, erro } = useToast()
 
   const [usuarios, setUsuarios] = React.useState<UsuarioAdmin[]>([])
@@ -159,7 +159,6 @@ function Conteudo({ telaOptions, meuEmail }: Props) {
 
       {criando && (
         <FormularioCriar
-          telaOptions={telaOptions}
           clienteOptions={clienteOptions}
           crOptions={crOptions}
           contratanteOptions={contratanteOptions}
@@ -242,7 +241,6 @@ function Conteudo({ telaOptions, meuEmail }: Props) {
                           <td colSpan={8} className="px-3 pb-4">
                             <EditorAcesso
                               usuario={u}
-                              telaOptions={telaOptions}
                               clienteOptions={clienteOptions}
                               crOptions={crOptions}
                               contratanteOptions={contratanteOptions}
@@ -295,14 +293,12 @@ function Selo({ on, rotuloOn, rotuloOff }: { on: boolean; rotuloOn: string; rotu
 }
 
 function FormularioCriar({
-  telaOptions,
   clienteOptions,
   crOptions,
   contratanteOptions,
   onCancelar,
   onCriado,
 }: {
-  telaOptions: Opcao[]
   clienteOptions: Opcao[]
   crOptions: Opcao[]
   contratanteOptions: Opcao[]
@@ -383,13 +379,7 @@ function FormularioCriar({
           <Input value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 8 caracteres" type="password" />
         </Campo>
         <Campo rotulo="Telas visíveis">
-          <MultiCombobox
-            values={telas}
-            onChange={setTelas}
-            options={telaOptions}
-            placeholder="Escolha os painéis…"
-            ariaLabel="Telas visíveis"
-          />
+          <SeletorTelas value={telas} onChange={setTelas} />
           <p className="mt-1.5 text-xs text-muted-foreground">Administradores veem todas as telas.</p>
         </Campo>
         <Campo rotulo="Classificação">
@@ -462,7 +452,6 @@ function FormularioCriar({
 
 function EditorAcesso({
   usuario,
-  telaOptions,
   clienteOptions,
   crOptions,
   contratanteOptions,
@@ -470,7 +459,6 @@ function EditorAcesso({
   onSalvo,
 }: {
   usuario: UsuarioAdmin
-  telaOptions: Opcao[]
   clienteOptions: Opcao[]
   crOptions: Opcao[]
   contratanteOptions: Opcao[]
@@ -564,13 +552,7 @@ function EditorAcesso({
       </div>
       <div className="mt-3 max-w-sm">
         <label className="mb-1.5 block text-sm font-medium text-navy">Telas visíveis</label>
-        <MultiCombobox
-          values={telas}
-          onChange={setTelas}
-          options={telaOptions}
-          placeholder="Escolha os painéis…"
-          ariaLabel="Telas visíveis"
-        />
+        <SeletorTelas value={telas} onChange={setTelas} />
         {isAdmin && (
           <p className="mt-1.5 text-xs text-muted-foreground">Como administrador, este usuário vê todas as telas.</p>
         )}
