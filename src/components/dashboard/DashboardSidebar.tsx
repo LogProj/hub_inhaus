@@ -15,6 +15,7 @@ import {
   Activity,
   ChevronRight,
   ChevronLeft,
+  Layers,
   type LucideIcon,
 } from "lucide-react"
 
@@ -133,13 +134,13 @@ export function DashboardSidebar({
         : []),
     ],
   }
-  // Grupos planos (domínios internos) vêm antes; EPI/Admin depois. A área Clientes
-  // (accordion aninhado) é renderizada ENTRE os dois, preservando a ordem original.
-  const gruposPrincipais: NavGroup[] = [grupoGeral, ...gruposDominio(visibleScreens)]
-  const gruposFinais: NavGroup[] = [
+  // Estrutura do raiz: Visão Geral (grupoGeral) + pasta In-Haus + pasta(s) Clientes +
+  // Administração. Tudo que é INTERNO (domínios + EPI) vai para dentro do In-Haus.
+  const gruposInternos: NavGroup[] = [
+    ...gruposDominio(visibleScreens),
     ...(grupoEpiAtual ? [grupoEpiAtual] : []),
-    ...(isAdmin ? [GRUPO_ADMIN] : []),
   ]
+  const grupoAdmin: NavGroup | null = isAdmin ? GRUPO_ADMIN : null
 
   // Domínios com subnível de clientes que têm ao menos um cliente visível ao usuário.
   const dominiosClientes = DOMINIOS.map((dominio) => ({
@@ -151,10 +152,12 @@ export function DashboardSidebar({
   // aninhar — raiz → lista de clientes → telas do cliente — mantendo o menu limpo.
   type Vista =
     | { nivel: "raiz" }
+    | { nivel: "inhaus" }
     | { nivel: "clientes"; dominioKey: string }
     | { nivel: "cliente"; dominioKey: string; clienteKey: string }
   const [vista, setVista] = useState<Vista>({ nivel: "raiz" })
-  // Ao navegar para uma tela de cliente, entra direto no nível daquele cliente.
+  // Ao navegar para uma tela de cliente entra no nível do cliente; para uma tela
+  // interna, entra no nível In-Haus. Assim a tela ativa sempre fica visível.
   useEffect(() => {
     for (const { dominio, clientes } of dominiosClientes) {
       for (const cliente of clientes) {
@@ -163,6 +166,9 @@ export function DashboardSidebar({
           return
         }
       }
+    }
+    if (gruposInternos.some((grupo) => grupo.items.some((item) => item.href === pathname))) {
+      setVista({ nivel: "inhaus" })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
@@ -224,10 +230,27 @@ export function DashboardSidebar({
       <nav className="flex flex-1 flex-col gap-6 overflow-y-auto">
         {vista.nivel === "raiz" && (
           <>
-            {gruposPrincipais.map(renderGrupo)}
+            {renderGrupo(grupoGeral)}
 
-            {/* Área(s) Clientes — cada uma é uma "pasta" que abre em drill-down. Só
-                aparece se o usuário tem tela de algum cliente (Eixo 1). */}
+            {/* Pasta In-Haus — agrupa TODAS as áreas internas (domínios + EPI). */}
+            {gruposInternos.length > 0 && (
+              <ul className="space-y-1">
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setVista({ nivel: "inhaus" })}
+                    className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground/75 transition-all hover:bg-teal-tint hover:text-teal"
+                  >
+                    <Layers className="h-[18px] w-[18px] shrink-0 transition-transform group-hover:scale-110" />
+                    <span className="flex-1 text-left">In-Haus</span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                  </button>
+                </li>
+              </ul>
+            )}
+
+            {/* Pasta(s) Clientes — drill-down. Só aparece se o usuário tem tela de
+                algum cliente (Eixo 1). */}
             {dominiosClientes.length > 0 && (
               <ul className="space-y-1">
                 {dominiosClientes.map(({ dominio }) => {
@@ -249,8 +272,29 @@ export function DashboardSidebar({
               </ul>
             )}
 
-            {gruposFinais.map(renderGrupo)}
+            {grupoAdmin && renderGrupo(grupoAdmin)}
           </>
+        )}
+
+        {/* Pasta In-Haus aberta — todas as áreas internas numa lista, com Voltar. */}
+        {vista.nivel === "inhaus" && (
+          <div className="space-y-6">
+            <div>
+              <button
+                type="button"
+                onClick={() => setVista({ nivel: "raiz" })}
+                className="mb-2 flex w-full items-center gap-1.5 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 transition-colors hover:text-teal"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                Voltar
+              </button>
+              <p className="flex items-center gap-1.5 px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-teal">
+                <Layers className="h-3 w-3" />
+                In-Haus
+              </p>
+            </div>
+            {gruposInternos.map(renderGrupo)}
+          </div>
         )}
 
         {/* Nível 2 — lista de clientes daquela área. */}
