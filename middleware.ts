@@ -35,7 +35,12 @@ function acessoLivreLiberado(): boolean {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (acessoLivreLiberado()) return NextResponse.next()
+  // Expõe o caminho atual aos server components (layout usa para a trava por tela).
+  const headersComPath = new Headers(request.headers)
+  headersComPath.set("x-pathname", pathname)
+  const seguir = () => NextResponse.next({ request: { headers: headersComPath } })
+
+  if (acessoLivreLiberado()) return seguir()
 
   const temSessao =
     request.cookies.has(ACCESS_COOKIE) || request.cookies.has(REFRESH_COOKIE)
@@ -55,7 +60,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(ROTA_INICIAL, request.url))
   }
 
-  return NextResponse.next()
+  return seguir()
 }
 
 export const config = {
