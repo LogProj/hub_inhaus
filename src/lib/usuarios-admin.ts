@@ -40,16 +40,19 @@ export type UsuarioAdmin = {
   clientes: string[]
   /** Escopo de dados: CRs avulsos (código 5 chars) vinculados. */
   crs: string[]
+  /** Escopo multi-tenant: clientes contratantes vinculados (ids). */
+  contratantes: number[]
 }
 
 /** Mescla as identidades do global_auth com o acesso local (auth_users). */
 export async function listarUsuariosAdmin(accessToken: string): Promise<UsuarioAdmin[]> {
-  const [globais, locais, segurancaIds, vClientes, vCrs] = await Promise.all([
+  const [globais, locais, segurancaIds, vClientes, vCrs, vContratantes] = await Promise.all([
     listGlobalAuthUsers(accessToken),
     prisma.authUser.findMany(),
     listarAuthUserIdsSeguranca(),
     prisma.authUserCliente.findMany({ select: { authUserId: true, nomeGrpCliente: true } }),
     prisma.authUserCr.findMany({ select: { authUserId: true, cr: true } }),
+    prisma.authUserContratante.findMany({ select: { authUserId: true, contratanteId: true } }),
   ])
   const porEmail = new Map(locais.map((l) => [l.email.toLowerCase(), l]))
   const porUuid = new Map(
@@ -66,6 +69,12 @@ export async function listarUsuariosAdmin(accessToken: string): Promise<UsuarioA
     const arr = crsPorUuid.get(v.authUserId) ?? []
     arr.push(v.cr)
     crsPorUuid.set(v.authUserId, arr)
+  }
+  const contratantesPorUuid = new Map<string, number[]>()
+  for (const v of vContratantes) {
+    const arr = contratantesPorUuid.get(v.authUserId) ?? []
+    arr.push(v.contratanteId)
+    contratantesPorUuid.set(v.authUserId, arr)
   }
   return globais
     .map((g): UsuarioAdmin => {
@@ -84,6 +93,7 @@ export async function listarUsuariosAdmin(accessToken: string): Promise<UsuarioA
         classificacao: local?.classificacao ?? "INTERNO",
         clientes: clientesPorUuid.get(g.id) ?? [],
         crs: crsPorUuid.get(g.id) ?? [],
+        contratantes: contratantesPorUuid.get(g.id) ?? [],
       }
     })
     .sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email, "pt-BR"))
@@ -105,6 +115,7 @@ export async function criarUsuarioAdmin(input: {
   classificacao: string
   clientes: string[]
   crs: string[]
+  contratantes?: number[]
 }): Promise<UsuarioAdmin> {
   const email = normalizeEmail(input.email)
   let identidade: GlobalAuthUser | null = null
@@ -150,7 +161,14 @@ export async function criarUsuarioAdmin(input: {
   const uuid = local.authUserId ?? identidade?.id ?? null
   const ehSeg = Boolean(uuid && input.seguranca)
   if (uuid && input.seguranca) await definirSegurancaCentral(uuid, true)
-  await salvarClassificacaoEVinculos(email, uuid, input.classificacao, input.clientes, input.crs)
+  await salvarClassificacaoEVinculos(
+    email,
+    uuid,
+    input.classificacao,
+    input.clientes,
+    input.crs,
+    input.contratantes ?? [],
+  )
 
   return {
     authUserId: uuid,
@@ -166,6 +184,7 @@ export async function criarUsuarioAdmin(input: {
     classificacao: input.classificacao,
     clientes: input.clientes,
     crs: input.crs,
+    contratantes: input.contratantes ?? [],
   }
 }
 
@@ -184,6 +203,7 @@ export async function atualizarAcessoLocal(input: {
   classificacao?: string
   clientes?: string[]
   crs?: string[]
+  contratantes?: number[]
 }): Promise<UsuarioAdmin> {
   const email = normalizeEmail(input.email)
   const telas = sanitizarTelas(input.visibleScreens)
@@ -215,7 +235,14 @@ export async function atualizarAcessoLocal(input: {
   }
 
   const classe = input.classificacao ?? "INTERNO"
-  await salvarClassificacaoEVinculos(email, uuid, classe, input.clientes ?? [], input.crs ?? [])
+  await salvarClassificacaoEVinculos(
+    email,
+    uuid,
+    classe,
+    input.clientes ?? [],
+    input.crs ?? [],
+    input.contratantes ?? [],
+  )
 
   return {
     authUserId: uuid,
@@ -231,6 +258,7 @@ export async function atualizarAcessoLocal(input: {
     classificacao: classe,
     clientes: input.clientes ?? [],
     crs: input.crs ?? [],
+    contratantes: input.contratantes ?? [],
   }
 }
 
@@ -244,12 +272,14 @@ async function salvarClassificacaoEVinculos(
   classificacao: string,
   clientes: string[],
   crs: string[],
+  contratantes: number[],
 ): Promise<void> {
   await prisma.authUser.update({ where: { email }, data: { classificacao } })
   if (!uuid) return
   await prisma.$transaction([
     prisma.authUserCliente.deleteMany({ where: { authUserId: uuid } }),
     prisma.authUserCr.deleteMany({ where: { authUserId: uuid } }),
+    prisma.authUserContratante.deleteMany({ where: { authUserId: uuid } }),
     ...(clientes.length
       ? [prisma.authUserCliente.createMany({
           data: clientes.map((nomeGrpCliente) => ({ authUserId: uuid, nomeGrpCliente })),
@@ -259,6 +289,12 @@ async function salvarClassificacaoEVinculos(
     ...(crs.length
       ? [prisma.authUserCr.createMany({
           data: crs.map((cr) => ({ authUserId: uuid, cr })),
+          skipDuplicates: true,
+        })]
+      : []),
+    ...(contratantes.length
+      ? [prisma.authUserContratante.createMany({
+          data: contratantes.map((contratanteId) => ({ authUserId: uuid, contratanteId })),
           skipDuplicates: true,
         })]
       : []),

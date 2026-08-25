@@ -36,6 +36,7 @@ type UsuarioAdmin = {
   classificacao: string
   clientes: string[]
   crs: string[]
+  contratantes: number[]
 }
 
 type Props = {
@@ -66,6 +67,7 @@ function Conteudo({ telaOptions, meuEmail }: Props) {
   const [editando, setEditando] = React.useState<string | null>(null)
   const [clienteOptions, setClienteOptions] = React.useState<Opcao[]>([])
   const [crOptions, setCrOptions] = React.useState<Opcao[]>([])
+  const [contratanteOptions, setContratanteOptions] = React.useState<Opcao[]>([])
 
   React.useEffect(() => {
     fetch("/api/admin/clientes-crs", { cache: "no-store" })
@@ -79,6 +81,17 @@ function Conteudo({ telaOptions, meuEmail }: Props) {
           })),
         )
       })
+      .catch(() => {})
+    fetch("/api/admin/contratantes", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { contratantes: [] }))
+      .then((d) =>
+        setContratanteOptions(
+          (d.contratantes ?? []).map((c: { id: number; nome: string }) => ({
+            value: String(c.id),
+            label: c.nome,
+          })),
+        ),
+      )
       .catch(() => {})
   }, [])
 
@@ -149,6 +162,7 @@ function Conteudo({ telaOptions, meuEmail }: Props) {
           telaOptions={telaOptions}
           clienteOptions={clienteOptions}
           crOptions={crOptions}
+          contratanteOptions={contratanteOptions}
           onCancelar={() => setCriando(false)}
           onCriado={() => {
             setCriando(false)
@@ -231,6 +245,7 @@ function Conteudo({ telaOptions, meuEmail }: Props) {
                               telaOptions={telaOptions}
                               clienteOptions={clienteOptions}
                               crOptions={crOptions}
+                              contratanteOptions={contratanteOptions}
                               ehEuMesmo={!!meuEmail && meuEmail.toLowerCase() === u.email.toLowerCase()}
                               onSalvo={() => {
                                 setEditando(null)
@@ -283,12 +298,14 @@ function FormularioCriar({
   telaOptions,
   clienteOptions,
   crOptions,
+  contratanteOptions,
   onCancelar,
   onCriado,
 }: {
   telaOptions: Opcao[]
   clienteOptions: Opcao[]
   crOptions: Opcao[]
+  contratanteOptions: Opcao[]
   onCancelar: () => void
   onCriado: () => void
 }) {
@@ -303,6 +320,7 @@ function FormularioCriar({
   const [classificacao, setClassificacao] = React.useState<"INTERNO" | "CLIENTE">("INTERNO")
   const [clientes, setClientes] = React.useState<string[]>([])
   const [crs, setCrs] = React.useState<string[]>([])
+  const [contratantes, setContratantes] = React.useState<string[]>([])
   const [ocupado, setOcupado] = React.useState(false)
 
   const escopoOk = classificacao !== "CLIENTE" || clientes.length > 0 || crs.length > 0
@@ -331,6 +349,7 @@ function FormularioCriar({
           classificacao,
           clientes,
           crs,
+          contratantes: contratantes.map(Number),
         }),
       })
       const d = await r.json()
@@ -404,6 +423,15 @@ function FormularioCriar({
             CRs efetivos: {crs.length} avulso(s), {clientes.length} cliente(s)
           </p>
         </Campo>
+        <Campo rotulo="Cliente(s) contratante(s)">
+          <MultiCombobox
+            values={contratantes}
+            onChange={setContratantes}
+            options={contratanteOptions}
+            placeholder="Cliente(s) contratante(s)…"
+            ariaLabel="Cliente contratante"
+          />
+        </Campo>
         <div className="flex flex-col justify-end gap-2">
           <label
             className={cn("flex items-center gap-2 text-sm text-navy", classificacao === "CLIENTE" && "opacity-50")}
@@ -437,6 +465,7 @@ function EditorAcesso({
   telaOptions,
   clienteOptions,
   crOptions,
+  contratanteOptions,
   ehEuMesmo,
   onSalvo,
 }: {
@@ -444,6 +473,7 @@ function EditorAcesso({
   telaOptions: Opcao[]
   clienteOptions: Opcao[]
   crOptions: Opcao[]
+  contratanteOptions: Opcao[]
   ehEuMesmo: boolean
   onSalvo: () => void
 }) {
@@ -457,6 +487,9 @@ function EditorAcesso({
   )
   const [clientes, setClientes] = React.useState<string[]>(usuario.clientes ?? [])
   const [crs, setCrs] = React.useState<string[]>(usuario.crs ?? [])
+  const [contratantes, setContratantes] = React.useState<string[]>(
+    (usuario.contratantes ?? []).map(String),
+  )
   const [ocupado, setOcupado] = React.useState(false)
 
   const escopoOk = classificacao !== "CLIENTE" || clientes.length > 0 || crs.length > 0
@@ -482,6 +515,7 @@ function EditorAcesso({
           classificacao,
           clientes,
           crs,
+          contratantes: contratantes.map(Number),
         }),
       })
       const d = await r.json()
@@ -575,6 +609,16 @@ function EditorAcesso({
           <p className="mt-1.5 text-xs text-muted-foreground">
             CRs efetivos: {crs.length} avulso(s), {clientes.length} cliente(s)
           </p>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-navy">Cliente(s) contratante(s)</label>
+          <MultiCombobox
+            values={contratantes}
+            onChange={setContratantes}
+            options={contratanteOptions}
+            placeholder="Cliente(s) contratante(s)…"
+            ariaLabel="Cliente contratante"
+          />
         </div>
       </div>
       {!escopoOk && (

@@ -35,6 +35,7 @@ const criarSchema = z.object({
   classificacao: z.enum(["INTERNO", "CLIENTE"]).default("INTERNO"),
   clientes: z.array(z.string().trim().min(1)).default([]),
   crs: z.array(z.string().trim().min(1)).default([]),
+  contratantes: z.array(z.number().int()).default([]),
 })
 
 const acessoSchema = z.object({
@@ -48,6 +49,7 @@ const acessoSchema = z.object({
   classificacao: z.enum(["INTERNO", "CLIENTE"]).default("INTERNO"),
   clientes: z.array(z.string().trim().min(1)).default([]),
   crs: z.array(z.string().trim().min(1)).default([]),
+  contratantes: z.array(z.number().int()).default([]),
 })
 
 function mapaErro(e: unknown): NextResponse {
