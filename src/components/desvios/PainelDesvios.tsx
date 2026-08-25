@@ -76,11 +76,10 @@ function TooltipPadrao({
   )
 }
 
-function GraficoBarrasHorizontais({ dados }: { dados: Contagem[] }) {
+function GraficoBarrasHorizontais({ dados, altura = 300 }: { dados: Contagem[]; altura?: number }) {
   if (dados.length === 0) {
     return <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
   }
-  const altura = Math.max(120, dados.length * 36)
   const preparados = dados.map((d) => ({ rotulo: d.chave || "Não informado", total: d.total }))
   return (
     <ResponsiveContainer width="100%" height={altura}>
@@ -188,7 +187,10 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
   }))
 
   return (
-    <div ref={containerRef} className="space-y-6 bg-mist p-1">
+    <div
+      ref={containerRef}
+      className={`space-y-6 bg-mist ${tela ? "min-h-screen overflow-y-auto p-6" : "p-1"}`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-semibold text-navy">Painel de Desvios</h1>
@@ -254,7 +256,7 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
               {statusGrafico.every((s) => s.total === 0) ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
               ) : (
-                <ResponsiveContainer width="100%" height={240}>
+                <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
                       data={statusGrafico}
@@ -320,21 +322,15 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <CartaoGrafico titulo="Desvios por motivo">
-              <div className="max-h-80 overflow-y-auto">
-                <GraficoBarrasHorizontais dados={dados.porMotivo} />
-              </div>
+              <GraficoBarrasHorizontais dados={dados.porMotivo} />
             </CartaoGrafico>
 
             <CartaoGrafico titulo="Desvios por causa raiz">
-              <div className="max-h-80 overflow-y-auto">
-                <GraficoBarrasHorizontais dados={dados.porCausaRaiz} />
-              </div>
+              <GraficoBarrasHorizontais dados={dados.porCausaRaiz} />
             </CartaoGrafico>
 
             <CartaoGrafico titulo="Top clientes">
-              <div className="max-h-80 overflow-y-auto">
-                <GraficoBarrasHorizontais dados={dados.porCliente} />
-              </div>
+              <GraficoBarrasHorizontais dados={dados.porCliente} />
             </CartaoGrafico>
           </div>
         </>
