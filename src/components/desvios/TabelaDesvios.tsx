@@ -6,6 +6,7 @@ import { ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Combobox } from "@/components/ui/Combobox"
 import { StatusBadge } from "@/components/desvios/StatusBadge"
+import { ConfiguradorListas } from "@/components/desvios/ConfiguradorListas"
 import { STATUS_DESVIO } from "@/lib/desvios/opcoes"
 
 type Desvio = {
@@ -31,6 +32,8 @@ type Resposta = {
   contadores: Record<string, number>
   pagina: number
   porPagina: number
+  meses: string[]
+  mes: string | null
 }
 
 const PORPAGINA = 20
@@ -38,6 +41,12 @@ const PORPAGINA = 20
 function formatarData(iso: string | null): string {
   if (!iso) return "—"
   return iso.slice(0, 10)
+}
+
+/** "2026-07" → "07/2026" */
+function formatarMes(aaaaMm: string): string {
+  const [ano, mes] = aaaaMm.split("-")
+  return `${mes}/${ano}`
 }
 
 function formatarValor(valor: string | null): string {
@@ -105,7 +114,7 @@ function SeletorStatusLinha({
   )
 }
 
-export function TabelaDesvios() {
+export function TabelaDesvios({ isAdmin = false }: { isAdmin?: boolean }) {
   const [dados, setDados] = useState<Resposta | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -113,6 +122,9 @@ export function TabelaDesvios() {
   const [status, setStatus] = useState("")
   const [busca, setBusca] = useState("")
   const [expandido, setExpandido] = useState<number | null>(null)
+  // null = ainda não inicializado a partir da resposta da API (usa o mês mais recente)
+  const [mes, setMes] = useState<string | null>(null)
+  const [mesInicializado, setMesInicializado] = useState(false)
 
   async function carregar() {
     setCarregando(true)
@@ -123,10 +135,15 @@ export function TabelaDesvios() {
       params.set("porPagina", String(PORPAGINA))
       if (status) params.set("status", status)
       if (busca) params.set("busca", busca)
+      if (mesInicializado && mes) params.set("mes", mes)
       const res = await fetch(`/api/desvios?${params.toString()}`)
       if (!res.ok) throw new Error("Falha ao carregar os desvios.")
       const json = (await res.json()) as Resposta
       setDados(json)
+      if (!mesInicializado) {
+        setMes(json.mes)
+        setMesInicializado(true)
+      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha inesperada.")
     } finally {
@@ -137,7 +154,7 @@ export function TabelaDesvios() {
   useEffect(() => {
     carregar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagina, status, busca])
+  }, [pagina, status, busca, mes])
 
   async function alterarStatus(id: number, novoStatus: string) {
     try {
@@ -182,6 +199,21 @@ export function TabelaDesvios() {
           ariaLabel="Filtrar por status"
           className="sm:w-56"
         />
+        <Combobox
+          value={mes}
+          onChange={(v) => {
+            setMes(v ?? "todos")
+            setMesInicializado(true)
+            setPagina(1)
+          }}
+          options={[
+            { value: "todos", label: "Todos os meses" },
+            ...(dados?.meses ?? []).map((m) => ({ value: m, label: formatarMes(m) })),
+          ]}
+          placeholder="Mês"
+          ariaLabel="Filtrar por mês"
+          className="sm:w-44"
+        />
         <input
           type="text"
           value={busca}
@@ -193,6 +225,7 @@ export function TabelaDesvios() {
           aria-label="Buscar desvios"
           className="h-10 flex-1 rounded-xl border border-input bg-white/80 px-4 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:border-teal/50 focus:ring-2 focus:ring-teal/20"
         />
+        {isAdmin && <ConfiguradorListas onChange={carregar} />}
       </div>
 
       {erro && (

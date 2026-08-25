@@ -1,31 +1,22 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Combobox, type ComboOption } from "@/components/ui/Combobox"
-import {
-  RESPONSAVEIS_INTERNOS,
-  TIPOS,
-  DIVISOES,
-  MOTIVOS,
-  CAUSAS_RAIZ,
-  STATUS_DESVIO,
-} from "@/lib/desvios/opcoes"
+import { ConfiguradorListas } from "@/components/desvios/ConfiguradorListas"
+import { STATUS_DESVIO } from "@/lib/desvios/opcoes"
 
 function paraOpcoes(lista: readonly string[]): ComboOption[] {
   return lista.map((valor) => ({ value: valor, label: valor }))
 }
 
-const OPCOES_RESPONSAVEIS = paraOpcoes(RESPONSAVEIS_INTERNOS)
-const OPCOES_TIPOS = paraOpcoes(TIPOS)
-const OPCOES_DIVISOES = paraOpcoes(DIVISOES)
-const OPCOES_MOTIVOS = paraOpcoes(MOTIVOS)
-const OPCOES_CAUSAS = paraOpcoes(CAUSAS_RAIZ)
 const OPCOES_STATUS: ComboOption[] = STATUS_DESVIO.map((s) => ({ value: s.value, label: s.label }))
+
+type OpcoesCampos = Record<string, string[]>
 
 type FormState = {
   responsavelInterno: string | null
@@ -59,11 +50,27 @@ const ESTADO_INICIAL: FormState = {
   solucao: "",
 }
 
-export function FormularioDesvio() {
+export function FormularioDesvio({ isAdmin = false }: { isAdmin?: boolean }) {
   const router = useRouter()
   const [form, setForm] = useState<FormState>(ESTADO_INICIAL)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [opcoes, setOpcoes] = useState<OpcoesCampos>({})
+
+  async function carregarOpcoes() {
+    try {
+      const res = await fetch("/api/desvios/opcoes")
+      if (!res.ok) return
+      const json = (await res.json()) as { opcoes: OpcoesCampos }
+      setOpcoes(json.opcoes)
+    } catch {
+      // silencioso: mantém os combos vazios até nova tentativa
+    }
+  }
+
+  useEffect(() => {
+    carregarOpcoes()
+  }, [])
 
   function atualizar<K extends keyof FormState>(campo: K, valor: FormState[K]) {
     setForm((atual) => ({ ...atual, [campo]: valor }))
@@ -108,6 +115,11 @@ export function FormularioDesvio() {
 
   return (
     <form onSubmit={aoEnviar} className="glass space-y-6 rounded-3xl p-6">
+      {isAdmin && (
+        <div className="flex justify-end">
+          <ConfiguradorListas onChange={carregarOpcoes} />
+        </div>
+      )}
       {erro && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {erro}
@@ -120,7 +132,7 @@ export function FormularioDesvio() {
           <Combobox
             value={form.responsavelInterno}
             onChange={(v) => atualizar("responsavelInterno", v)}
-            options={OPCOES_RESPONSAVEIS}
+            options={paraOpcoes(opcoes.responsavelInterno ?? [])}
             placeholder="Selecionar responsável"
             allowClear
             ariaLabel="Responsável interno"
@@ -142,7 +154,7 @@ export function FormularioDesvio() {
           <Combobox
             value={form.tipo}
             onChange={(v) => atualizar("tipo", v)}
-            options={OPCOES_TIPOS}
+            options={paraOpcoes(opcoes.tipo ?? [])}
             placeholder="Selecionar tipo"
             allowClear
             ariaLabel="Tipo"
@@ -154,7 +166,7 @@ export function FormularioDesvio() {
           <Combobox
             value={form.divisao}
             onChange={(v) => atualizar("divisao", v)}
-            options={OPCOES_DIVISOES}
+            options={paraOpcoes(opcoes.divisao ?? [])}
             placeholder="Selecionar divisão"
             allowClear
             ariaLabel="Divisão"
@@ -196,7 +208,7 @@ export function FormularioDesvio() {
           <Combobox
             value={form.motivo}
             onChange={(v) => atualizar("motivo", v)}
-            options={OPCOES_MOTIVOS}
+            options={paraOpcoes(opcoes.motivo ?? [])}
             placeholder="Selecionar motivo"
             allowClear
             ariaLabel="Motivo"
@@ -208,7 +220,7 @@ export function FormularioDesvio() {
           <Combobox
             value={form.causaRaiz}
             onChange={(v) => atualizar("causaRaiz", v)}
-            options={OPCOES_CAUSAS}
+            options={paraOpcoes(opcoes.causaRaiz ?? [])}
             placeholder="Selecionar causa raiz"
             allowClear
             ariaLabel="Causa raiz"
