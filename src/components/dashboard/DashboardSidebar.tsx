@@ -122,18 +122,20 @@ export function DashboardSidebar({
   visibleScreens?: string[] | null
 }) {
   const pathname = usePathname()
-  const grupoEpiAtual = grupoEpi(epiConfig, epiValida)
-  // Quem pode preencher (líder/Segurança/admin) tem "Checklists" logo no topo —
-  // é a porta de entrada do preenchimento.
-  const grupoGeral: NavGroup = {
-    ...GRUPO_GERAL,
-    items: [
-      ...GRUPO_GERAL.items,
-      ...(epiValida
-        ? [{ href: "/dashboards/checklists", label: "Checklists", icon: ClipboardCheck }]
-        : []),
-    ],
-  }
+  // "Checklists" (porta de preenchimento do líder) mora DENTRO do In-Haus, junto do
+  // EPI — não na Visão Geral. Fica no topo do grupo EPI.
+  const grupoEpiBase = grupoEpi(epiConfig, epiValida)
+  const grupoEpiAtual: NavGroup | null =
+    grupoEpiBase && epiValida
+      ? {
+          ...grupoEpiBase,
+          items: [
+            { href: "/dashboards/checklists", label: "Checklists", icon: ClipboardCheck },
+            ...grupoEpiBase.items,
+          ],
+        }
+      : grupoEpiBase
+  const grupoGeral: NavGroup = GRUPO_GERAL
   // Estrutura do raiz: Visão Geral (grupoGeral) + pasta In-Haus + pasta(s) Clientes +
   // Administração. Tudo que é INTERNO (domínios + EPI) vai para dentro do In-Haus.
   const gruposInternos: NavGroup[] = [
