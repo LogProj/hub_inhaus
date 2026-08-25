@@ -54,7 +54,9 @@ const GRUPO_GERAL: NavGroup = {
 // renderizados como accordion aninhado (Clientes → cliente → telas), mais abaixo.
 function gruposDominio(visibleScreens: string[] | null): NavGroup[] {
   const permitidas = visibleScreens ? new Set(visibleScreens) : null
-  return DOMINIOS.filter((dominio) => !dominio.clientes?.length).map((dominio) => ({
+  return DOMINIOS.filter(
+    (dominio) => !dominio.clientes?.length && dominio.key !== "epi",
+  ).map((dominio) => ({
     title: dominio.label,
     icon: dominio.icone,
     items: dominio.telas

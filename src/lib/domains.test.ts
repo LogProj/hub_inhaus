@@ -15,6 +15,7 @@ describe("registro de dominios", () => {
       "qualidade",
       "treinamentos",
       "financeiro",
+      "epi",
       "clientes",
     ])
   })
