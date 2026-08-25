@@ -248,12 +248,13 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
           </div>
 
           {/* Gráficos */}
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-5">
+            <div className="lg:col-span-2">
             <CartaoGrafico titulo="Desvios por status">
               {statusGrafico.every((s) => s.total === 0) ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
               ) : (
-                <ResponsiveContainer width="100%" height={260}>
+                <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
                     <Pie
                       data={statusGrafico}
@@ -280,12 +281,14 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
                 </ResponsiveContainer>
               )}
             </CartaoGrafico>
+            </div>
 
+            <div className="lg:col-span-3">
             <CartaoGrafico titulo="Evolução por mês">
               {mesesGrafico.length === 0 ? (
                 <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
               ) : (
-                <ResponsiveContainer width="100%" height={260}>
+                <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={mesesGrafico} margin={{ top: 16, right: 16, bottom: 2, left: -16 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(2,36,67,0.08)" vertical={false} />
                     <XAxis
@@ -312,6 +315,7 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
                 </ResponsiveContainer>
               )}
             </CartaoGrafico>
+            </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
