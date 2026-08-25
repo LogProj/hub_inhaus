@@ -1,20 +1,26 @@
 "use client"
 
+import * as React from "react"
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  LabelList,
+  Legend,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts"
+import { Maximize2, Minimize2 } from "lucide-react"
 
-import { StatusBadge } from "@/components/desvios/StatusBadge"
-import { STATUS_DESVIO } from "@/lib/desvios/opcoes"
+import { Combobox } from "@/components/ui/Combobox"
+import { STATUS_DESVIO, rotuloStatus } from "@/lib/desvios/opcoes"
 import type { Contagem, IndicadoresDesvios } from "@/lib/desvios"
 
 const TEAL = "#027193"
@@ -28,7 +34,15 @@ function formatarMoeda(valor: number): string {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 }
 
-function formatarMes(chave: string): string {
+/** "YYYY-MM" → "MM/AAAA" */
+function formatarMesLongo(chave: string): string {
+  const [ano, mes] = chave.split("-")
+  if (!ano || !mes) return chave
+  return `${mes}/${ano}`
+}
+
+/** "YYYY-MM" → "MM/AA" (eixo compacto) */
+function formatarMesCurto(chave: string): string {
   const [ano, mes] = chave.split("-")
   if (!ano || !mes) return chave
   return `${mes}/${ano.slice(2)}`
@@ -73,7 +87,7 @@ function GraficoBarrasHorizontais({ dados }: { dados: Contagem[] }) {
       <BarChart
         layout="vertical"
         data={preparados}
-        margin={{ top: 2, right: 40, bottom: 2, left: 4 }}
+        margin={{ top: 2, right: 48, bottom: 2, left: 4 }}
         barCategoryGap={8}
       >
         <XAxis type="number" hide />
@@ -87,160 +101,240 @@ function GraficoBarrasHorizontais({ dados }: { dados: Contagem[] }) {
           tickFormatter={(v: string) => encurtar(v)}
         />
         <Tooltip cursor={{ fill: "rgba(2,113,147,0.06)" }} content={<TooltipPadrao />} />
-        <Bar dataKey="total" radius={[0, 6, 6, 0]} maxBarSize={20} fill={TEAL} />
+        <Bar dataKey="total" radius={[0, 6, 6, 0]} maxBarSize={20} fill={TEAL}>
+          <LabelList
+            dataKey="total"
+            position="right"
+            className="fill-foreground text-[11px] font-medium"
+            formatter={(value: React.ReactNode) => Number(value).toLocaleString("pt-BR")}
+          />
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   )
 }
 
-export function PainelDesvios({ dados }: { dados: IndicadoresDesvios }) {
-  if (dados.total === 0) {
-    return (
-      <div className="glass rounded-3xl p-10 text-center text-muted-foreground">
-        Sem desvios no seu acesso.
-      </div>
-    )
+function CartaoGrafico({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div className="glass rounded-3xl p-5">
+      <h2 className="mb-3 text-sm font-semibold text-navy">{titulo}</h2>
+      {children}
+    </div>
+  )
+}
+
+export function PainelDesvios({ info }: { info: React.ReactNode }) {
+  const [dados, setDados] = React.useState<IndicadoresDesvios | null>(null)
+  const [meses, setMeses] = React.useState<string[]>([])
+  const [mes, setMes] = React.useState<string | null>(null)
+  const [carregando, setCarregando] = React.useState(true)
+  const [tela, setTela] = React.useState(false)
+
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    let cancelado = false
+    setCarregando(true)
+    const params = mes ? `?mes=${encodeURIComponent(mes)}` : ""
+    fetch(`/api/desvios/indicadores${params}`)
+      .then((r) => r.json())
+      .then((json: { indicadores: IndicadoresDesvios; meses: string[]; mes: string | null }) => {
+        if (cancelado) return
+        setDados(json.indicadores)
+        setMeses(json.meses)
+        setMes(json.mes)
+      })
+      .finally(() => {
+        if (!cancelado) setCarregando(false)
+      })
+    return () => {
+      cancelado = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mes])
+
+  React.useEffect(() => {
+    function aoMudar() {
+      setTela(Boolean(document.fullscreenElement))
+    }
+    document.addEventListener("fullscreenchange", aoMudar)
+    return () => document.removeEventListener("fullscreenchange", aoMudar)
+  }, [])
+
+  function alternarTelaCheia() {
+    if (!containerRef.current) return
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.()
+    } else {
+      containerRef.current.requestFullscreen?.()
+    }
   }
 
-  const concluidas = dados.porStatus.CONCLUIDA ?? 0
-  const aderencia = dados.total > 0 ? (concluidas / dados.total) * 100 : 0
+  const opcoesMeses = meses.map((m) => ({ value: m, label: formatarMesLongo(m) }))
+
+  const concluidas = dados?.porStatus.CONCLUIDA ?? 0
+  const total = dados?.total ?? 0
+  const aderencia = total > 0 ? (concluidas / total) * 100 : 0
 
   const statusGrafico = STATUS_DESVIO.map((s) => ({
     rotulo: s.label,
-    total: dados.porStatus[s.value] ?? 0,
+    total: dados?.porStatus[s.value] ?? 0,
     value: s.value,
   }))
 
-  const mesesGrafico = dados.porMes.map((m) => ({ rotulo: formatarMes(m.chave), total: m.total }))
+  const mesesGrafico = (dados?.porMes ?? []).map((m) => ({
+    rotulo: formatarMesCurto(m.chave),
+    total: m.total,
+  }))
 
   return (
-    <div className="space-y-6">
-      {/* KPIs */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="glass rounded-3xl p-5">
-          <p className="text-sm text-muted-foreground">Total de desvios</p>
-          <p className="mt-1 text-2xl font-semibold text-navy">
-            {dados.total.toLocaleString("pt-BR")}
-          </p>
+    <div ref={containerRef} className="space-y-6 bg-mist p-1">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold text-navy">Painel de Desvios</h1>
+          {info}
         </div>
-        {STATUS_DESVIO.map((s) => {
-          const total = dados.porStatus[s.value] ?? 0
-          const pct = dados.total > 0 ? (total / dados.total) * 100 : 0
-          return (
-            <div key={s.value} className="glass rounded-3xl p-5">
-              <StatusBadge status={s.value} />
-              <p className="mt-2 text-2xl font-semibold text-navy">
+        <div className="flex items-center gap-2">
+          <Combobox
+            value={mes}
+            onChange={(v) => setMes(v)}
+            options={opcoesMeses}
+            placeholder="Mês"
+            ariaLabel="Filtrar por mês"
+            className="w-40"
+          />
+          <button
+            type="button"
+            onClick={alternarTelaCheia}
+            aria-label={tela ? "Sair da tela cheia" : "Tela cheia"}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-input bg-white/80 text-navy transition-colors hover:border-teal/40"
+          >
+            {tela ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
+      {!dados || (total === 0 && !carregando) ? (
+        <div className="glass rounded-3xl p-10 text-center text-muted-foreground">
+          {carregando ? "Carregando…" : "Sem desvios para o período."}
+        </div>
+      ) : (
+        <>
+          {/* KPIs */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="glass rounded-3xl bg-inhaus-grad p-5 text-white">
+              <p className="text-sm text-white/80">Aderência</p>
+              <p className="mt-1 text-3xl font-semibold">{aderencia.toFixed(1)}%</p>
+              <p className="text-xs text-white/70">Concluídas ÷ total de desvios</p>
+            </div>
+            <div className="glass rounded-3xl p-5">
+              <p className="text-sm text-muted-foreground">Total de desvios</p>
+              <p className="mt-1 text-2xl font-semibold text-navy">
                 {total.toLocaleString("pt-BR")}
               </p>
-              <p className="text-xs text-muted-foreground">{pct.toFixed(1)}% do total</p>
             </div>
-          )
-        })}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="glass rounded-3xl bg-inhaus-grad p-5 text-white">
-          <p className="text-sm text-white/80">Aderência</p>
-          <p className="mt-1 text-3xl font-semibold">{aderencia.toFixed(1)}%</p>
-          <p className="text-xs text-white/70">Concluídas ÷ total de desvios</p>
-        </div>
-        <div className="glass rounded-3xl p-5">
-          <p className="text-sm text-muted-foreground">Valor pendente</p>
-          <p className="mt-1 text-2xl font-semibold text-navy">
-            {formatarMoeda(dados.valorPendente)}
-          </p>
-        </div>
-        <div className="glass rounded-3xl p-5">
-          <p className="text-sm text-muted-foreground">Valor total</p>
-          <p className="mt-1 text-2xl font-semibold text-navy">
-            {formatarMoeda(dados.valorTotal)}
-          </p>
-        </div>
-      </div>
-
-      {/* Gráficos */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="glass rounded-3xl p-5">
-          <h2 className="mb-3 text-sm font-semibold text-navy">Desvios por status</h2>
-          {statusGrafico.every((s) => s.total === 0) ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={Math.max(120, statusGrafico.length * 40)}>
-              <BarChart
-                layout="vertical"
-                data={statusGrafico}
-                margin={{ top: 2, right: 40, bottom: 2, left: 4 }}
-                barCategoryGap={12}
-              >
-                <XAxis type="number" hide />
-                <YAxis
-                  type="category"
-                  dataKey="rotulo"
-                  width={110}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                />
-                <Tooltip cursor={{ fill: "rgba(2,113,147,0.06)" }} content={<TooltipPadrao />} />
-                <Bar dataKey="total" radius={[0, 6, 6, 0]} maxBarSize={26}>
-                  {statusGrafico.map((s) => (
-                    <Cell key={s.value} fill={CORES_STATUS[s.value] ?? TEAL} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        <div className="glass rounded-3xl p-5">
-          <h2 className="mb-3 text-sm font-semibold text-navy">Evolução por mês</h2>
-          {mesesGrafico.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={mesesGrafico} margin={{ top: 8, right: 16, bottom: 2, left: -16 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(2,36,67,0.08)" vertical={false} />
-                <XAxis
-                  dataKey="rotulo"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip content={<TooltipPadrao />} />
-                <Line
-                  type="monotone"
-                  dataKey="total"
-                  stroke={TEAL}
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: TEAL }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        <div className="glass rounded-3xl p-5">
-          <h2 className="mb-3 text-sm font-semibold text-navy">Desvios por motivo</h2>
-          <div className="max-h-80 overflow-y-auto">
-            <GraficoBarrasHorizontais dados={dados.porMotivo} />
+            <div className="glass rounded-3xl p-5">
+              <p className="text-sm text-muted-foreground">Valor total</p>
+              <p className="mt-1 text-2xl font-semibold text-navy">
+                {formatarMoeda(dados.valorTotal)}
+              </p>
+            </div>
+            <div className="glass rounded-3xl p-5">
+              <p className="text-sm text-muted-foreground">Valor pendente</p>
+              <p className="mt-1 text-2xl font-semibold text-navy">
+                {formatarMoeda(dados.valorPendente)}
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div className="glass rounded-3xl p-5">
-          <h2 className="mb-3 text-sm font-semibold text-navy">Desvios por causa raiz</h2>
-          <div className="max-h-80 overflow-y-auto">
-            <GraficoBarrasHorizontais dados={dados.porCausaRaiz} />
-          </div>
-        </div>
+          {/* Gráficos */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <CartaoGrafico titulo="Desvios por status">
+              {statusGrafico.every((s) => s.total === 0) ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={statusGrafico}
+                      dataKey="total"
+                      nameKey="rotulo"
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={2}
+                      label={(props: { value?: number }) =>
+                        (props.value ?? 0).toLocaleString("pt-BR")
+                      }
+                    >
+                      {statusGrafico.map((s) => (
+                        <Cell key={s.value} fill={CORES_STATUS[s.value] ?? TEAL} />
+                      ))}
+                    </Pie>
+                    <Legend
+                      formatter={(_valor, entrada) =>
+                        rotuloStatus((entrada?.payload as { value: string })?.value ?? "")
+                      }
+                    />
+                    <Tooltip content={<TooltipPadrao />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </CartaoGrafico>
 
-        <div className="glass rounded-3xl p-5 lg:col-span-2">
-          <h2 className="mb-3 text-sm font-semibold text-navy">Top clientes</h2>
-          <div className="max-h-80 overflow-y-auto">
-            <GraficoBarrasHorizontais dados={dados.porCliente} />
+            <CartaoGrafico titulo="Evolução por mês">
+              {mesesGrafico.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={mesesGrafico} margin={{ top: 16, right: 16, bottom: 2, left: -16 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(2,36,67,0.08)" vertical={false} />
+                    <XAxis
+                      dataKey="rotulo"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    />
+                    <Tooltip content={<TooltipPadrao />} />
+                    <Line type="monotone" dataKey="total" stroke={TEAL} strokeWidth={2} dot={{ r: 3, fill: TEAL }}>
+                      <LabelList
+                        dataKey="total"
+                        position="top"
+                        className="fill-foreground text-[11px] font-medium"
+                        formatter={(value: React.ReactNode) => Number(value).toLocaleString("pt-BR")}
+                      />
+                    </Line>
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </CartaoGrafico>
           </div>
-        </div>
-      </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <CartaoGrafico titulo="Desvios por motivo">
+              <div className="max-h-80 overflow-y-auto">
+                <GraficoBarrasHorizontais dados={dados.porMotivo} />
+              </div>
+            </CartaoGrafico>
+
+            <CartaoGrafico titulo="Desvios por causa raiz">
+              <div className="max-h-80 overflow-y-auto">
+                <GraficoBarrasHorizontais dados={dados.porCausaRaiz} />
+              </div>
+            </CartaoGrafico>
+
+            <CartaoGrafico titulo="Top clientes">
+              <div className="max-h-80 overflow-y-auto">
+                <GraficoBarrasHorizontais dados={dados.porCliente} />
+              </div>
+            </CartaoGrafico>
+          </div>
+        </>
+      )}
     </div>
   )
 }
