@@ -20,6 +20,7 @@ import {
 import { Maximize2, Minimize2 } from "lucide-react"
 
 import { Combobox } from "@/components/ui/Combobox"
+import { TabelaResumoDesvios } from "@/components/desvios/TabelaResumoDesvios"
 import { STATUS_DESVIO, rotuloStatus } from "@/lib/desvios/opcoes"
 import type { Contagem, IndicadoresDesvios } from "@/lib/desvios"
 
@@ -333,6 +334,9 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
               <GraficoBarrasHorizontais dados={dados.porCliente} />
             </CartaoGrafico>
           </div>
+
+          {/* Tabela paginada dos desvios do período, com "Ver" para o detalhe. */}
+          <TabelaResumoDesvios mes={mes} />
         </>
       )}
     </div>
