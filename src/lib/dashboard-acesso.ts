@@ -26,6 +26,8 @@ export type PapeisDashboard = {
   soPreenche: boolean
   /** Telas concedidas ao usuário (chaves de domains.ts). Admin/dev = todas. */
   visibleScreens: string[]
+  /** Classificação local: 'INTERNO' | 'CLIENTE'. Dita o portal enxuto do cliente. */
+  classificacao: string
 }
 
 export async function resolverPapeisDashboard(next = "/dashboards"): Promise<PapeisDashboard> {
@@ -39,6 +41,7 @@ export async function resolverPapeisDashboard(next = "/dashboards"): Promise<Pap
       epiValida: true,
       soPreenche: false,
       visibleScreens: CHAVES_DE_TELA,
+      classificacao: "INTERNO",
     }
   }
 
@@ -67,6 +70,7 @@ export async function resolverPapeisDashboard(next = "/dashboards"): Promise<Pap
     epiValida,
     soPreenche: epiValida && !epiConfig && !isAdmin,
     visibleScreens: sessao.authorization.visibleScreens,
+    classificacao: sessao.authorization.classificacao ?? "INTERNO",
   }
 }
 

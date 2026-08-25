@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import { ArrowUpRight, Sparkles } from "lucide-react"
 
 import { TiltCard } from "@/components/TiltCard"
-import { DOMINIOS } from "@/lib/domains"
+import { DOMINIOS, telasVisiveis } from "@/lib/domains"
 import { resolverPapeisDashboard } from "@/lib/dashboard-acesso"
 
 export const metadata: Metadata = { title: "Visão geral" }
@@ -24,6 +24,24 @@ export default async function DashboardsHome() {
   // com KPIs é para admin/Segurança.
   const papeis = await resolverPapeisDashboard()
   if (papeis.soPreenche) redirect("/dashboards/checklists")
+
+  // Cliente: a Home genérica do hub não é para ele. Vai direto para a 1ª tela
+  // concedida; sem telas liberadas, mostra um aviso enxuto (nada do hub interno).
+  if (papeis.classificacao === "CLIENTE") {
+    const visiveis = telasVisiveis({
+      isAdmin: papeis.isAdmin,
+      visibleScreens: papeis.visibleScreens,
+    }).filter((t) => t.key !== "home")
+    if (visiveis[0]) redirect(visiveis[0].href)
+    return (
+      <div className="mx-auto max-w-md py-20 text-center">
+        <h1 className="font-display text-2xl font-semibold text-navy">Acesso em configuração</h1>
+        <p className="mt-2 text-muted-foreground">
+          Você ainda não tem telas liberadas. Fale com o administrador para liberar o seu acesso.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
