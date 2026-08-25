@@ -21,7 +21,8 @@ import {
 
 import { cn } from "@/lib/utils"
 import { InhausLogo } from "@/components/brand/InhausLogo"
-import { DOMINIOS, TELA_HOME, clientesVisiveis } from "@/lib/domains"
+import { DOMINIOS, TELA_HOME, clientesVisiveis, TODAS_AS_TELAS } from "@/lib/domains"
+import { marcaDoCliente } from "@/lib/clientes-branding"
 
 type NavItem = {
   href: string
@@ -110,6 +111,7 @@ export function DashboardSidebar({
   onLogout,
   signingOut = false,
   visibleScreens = null,
+  classificacao = "INTERNO",
 }: {
   onNavigate?: () => void
   isAdmin?: boolean
@@ -120,8 +122,17 @@ export function DashboardSidebar({
   onLogout?: () => void
   signingOut?: boolean
   visibleScreens?: string[] | null
+  classificacao?: string
 }) {
   const pathname = usePathname()
+
+  // Portal do cliente: sidebar plana, só com as telas concedidas àquele cliente +
+  // logo da marca — nada de In-Haus, Clientes, Administração ou Visão Geral.
+  const ehCliente = classificacao === "CLIENTE"
+  const permitidasCliente = visibleScreens ? new Set(visibleScreens) : null
+  const telasCliente = TODAS_AS_TELAS.filter(
+    (t) => !t.emBreve && t.clienteKey && (permitidasCliente === null || permitidasCliente.has(t.key)),
+  )
   // "Checklists" (porta de preenchimento do líder) mora DENTRO do In-Haus, junto do
   // EPI — não na Visão Geral. Fica no topo do grupo EPI.
   const grupoEpiBase = grupoEpi(epiConfig, epiValida)
@@ -177,6 +188,93 @@ export function DashboardSidebar({
 
   const entradaCliente = (dominioKey: string) =>
     dominiosClientes.find((d) => d.dominio.key === dominioKey) ?? null
+
+  // Modo portal do cliente: sidebar plana e independente do fluxo interno acima —
+  // early return para não misturar as duas árvores de navegação.
+  if (ehCliente) {
+    const marca = marcaDoCliente(telasCliente[0]?.clienteKey, telasCliente[0]?.clienteLabel)
+    return (
+      <div className="flex h-full flex-col gap-6 px-4 py-6">
+        <Link
+          href="/dashboards"
+          onClick={onNavigate}
+          className="flex flex-col items-center justify-center gap-1.5 px-2"
+          aria-label="Início"
+        >
+          {marca.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={marca.logo} alt={marca.nome} className="h-8 w-auto" />
+          ) : (
+            <span className="text-sm font-semibold text-foreground">{marca.nome}</span>
+          )}
+          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            {marca.nome}
+          </span>
+        </Link>
+
+        <nav className="flex flex-1 flex-col gap-6 overflow-y-auto">
+          {telasCliente.length === 0 ? (
+            <p className="px-3 text-sm text-muted-foreground">
+              Sem telas liberadas. Fale com o administrador.
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {telasCliente.map((tela) => {
+                const active = pathname === tela.href
+                const TelaIcon = tela.icone ?? LayoutDashboard
+                return (
+                  <li key={tela.href}>
+                    <Link
+                      href={tela.href}
+                      onClick={onNavigate}
+                      className={cn(
+                        "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                        active
+                          ? "bg-inhaus-grad text-white shadow-[0_10px_24px_-12px_rgba(0,36,67,0.7)]"
+                          : "text-foreground/75 hover:bg-teal-tint hover:text-teal",
+                      )}
+                    >
+                      <TelaIcon
+                        className={cn(
+                          "h-[18px] w-[18px] shrink-0 transition-transform",
+                          !active && "group-hover:scale-110",
+                        )}
+                      />
+                      <span className="flex-1 leading-tight">{tela.label}</span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </nav>
+
+        <div className="mt-auto border-t border-navy/10 pt-4">
+          <div className="flex items-center gap-2 rounded-xl border border-navy/10 bg-white/70 px-3 py-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-inhaus-grad text-white">
+              <UserRound className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="truncate text-xs font-semibold text-foreground">
+                {nome ?? email ?? "Carregando…"}
+              </p>
+              <p className="truncate text-[10px] text-muted-foreground">
+                {isAdmin ? "Administrador" : email ? "Acesso ao sistema" : ""}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onLogout}
+            disabled={signingOut}
+            className="mt-2 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium text-foreground/70 transition-colors hover:bg-teal-tint hover:text-teal disabled:opacity-50"
+          >
+            <LogOut className="h-4 w-4" />
+            {signingOut ? "Saindo…" : "Sair"}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const renderGrupo = (group: NavGroup) => (
     <div key={group.title}>

@@ -23,9 +23,11 @@ type DashboardShellProps = {
   soPreenche?: boolean
   /** Telas concedidas ao usuário (null = todas, ex.: admin/dev) — filtra os grupos de domínio da sidebar. */
   visibleScreens?: string[] | null
+  /** "INTERNO" | "CLIENTE" — CLIENTE troca a sidebar para o modo portal (só telas do cliente + logo). */
+  classificacao?: string
 }
 
-export function DashboardShell({ children, nome, email, isAdmin, epiConfig = false, epiValida = false, soPreenche = false, visibleScreens = null }: DashboardShellProps) {
+export function DashboardShell({ children, nome, email, isAdmin, epiConfig = false, epiValida = false, soPreenche = false, visibleScreens = null, classificacao = "INTERNO" }: DashboardShellProps) {
   const router = useRouter()
   const [drawer, setDrawer] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -61,6 +63,7 @@ export function DashboardShell({ children, nome, email, isAdmin, epiConfig = fal
           onLogout={handleLogout}
           signingOut={signingOut}
           visibleScreens={visibleScreens}
+          classificacao={classificacao}
         />
       </aside>
 
@@ -95,6 +98,7 @@ export function DashboardShell({ children, nome, email, isAdmin, epiConfig = fal
             signingOut={signingOut}
             onNavigate={() => setDrawer(false)}
             visibleScreens={visibleScreens}
+            classificacao={classificacao}
           />
         </div>
       </div>

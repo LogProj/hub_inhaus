@@ -13,6 +13,7 @@ export default async function DashboardsLayout({ children }: { children: React.R
       epiValida={papeis.epiValida}
       soPreenche={papeis.soPreenche}
       visibleScreens={papeis.visibleScreens}
+      classificacao={papeis.classificacao}
     >
       {children}
     </DashboardShell>
