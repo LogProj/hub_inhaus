@@ -13,8 +13,8 @@ import {
   ClipboardCheck,
   ListChecks,
   Activity,
-  ChevronDown,
   ChevronRight,
+  ChevronLeft,
   type LucideIcon,
 } from "lucide-react"
 
@@ -147,23 +147,28 @@ export function DashboardSidebar({
     clientes: clientesVisiveis(dominio, visibleScreens),
   })).filter((d) => d.clientes.length > 0)
 
-  // Estado do accordion: qual seção (domínio Clientes) e qual cliente estão abertos.
-  // Um cliente aberto por vez. Ao navegar para uma tela de cliente, abre a seção e o
-  // cliente correspondentes automaticamente.
-  const [secaoAberta, setSecaoAberta] = useState<string | null>(null)
-  const [clienteAberto, setClienteAberto] = useState<string | null>(null)
+  // Navegação em DRILL-DOWN na área Clientes: a sidebar TROCA de nível em vez de
+  // aninhar — raiz → lista de clientes → telas do cliente — mantendo o menu limpo.
+  type Vista =
+    | { nivel: "raiz" }
+    | { nivel: "clientes"; dominioKey: string }
+    | { nivel: "cliente"; dominioKey: string; clienteKey: string }
+  const [vista, setVista] = useState<Vista>({ nivel: "raiz" })
+  // Ao navegar para uma tela de cliente, entra direto no nível daquele cliente.
   useEffect(() => {
     for (const { dominio, clientes } of dominiosClientes) {
       for (const cliente of clientes) {
         if (cliente.telas.some((tela) => tela.href === pathname)) {
-          setSecaoAberta(dominio.key)
-          setClienteAberto(cliente.key)
+          setVista({ nivel: "cliente", dominioKey: dominio.key, clienteKey: cliente.key })
           return
         }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
+
+  const entradaCliente = (dominioKey: string) =>
+    dominiosClientes.find((d) => d.dominio.key === dominioKey) ?? null
 
   const renderGrupo = (group: NavGroup) => (
     <div key={group.title}>
@@ -217,93 +222,134 @@ export function DashboardSidebar({
       </Link>
 
       <nav className="flex flex-1 flex-col gap-6 overflow-y-auto">
-        {gruposPrincipais.map(renderGrupo)}
+        {vista.nivel === "raiz" && (
+          <>
+            {gruposPrincipais.map(renderGrupo)}
 
-        {/* Área Clientes — accordion aninhado: seção → cliente → telas. Só aparecem
-            os clientes cujas telas foram concedidas ao usuário (Eixo 1). */}
-        {dominiosClientes.map(({ dominio, clientes }) => {
-          const aberta = secaoAberta === dominio.key
-          const SecaoIcon = dominio.icone
-          return (
-            <div key={dominio.key}>
-              <button
-                type="button"
-                onClick={() => setSecaoAberta((atual) => (atual === dominio.key ? null : dominio.key))}
-                aria-expanded={aberta}
-                className="flex w-full items-center gap-1.5 px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 transition-colors hover:text-teal"
-              >
-                <SecaoIcon className="h-3 w-3" />
-                <span className="flex-1 text-left">{dominio.label}</span>
-                {aberta ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-              </button>
+            {/* Área(s) Clientes — cada uma é uma "pasta" que abre em drill-down. Só
+                aparece se o usuário tem tela de algum cliente (Eixo 1). */}
+            {dominiosClientes.length > 0 && (
+              <ul className="space-y-1">
+                {dominiosClientes.map(({ dominio }) => {
+                  const SecaoIcon = dominio.icone
+                  return (
+                    <li key={dominio.key}>
+                      <button
+                        type="button"
+                        onClick={() => setVista({ nivel: "clientes", dominioKey: dominio.key })}
+                        className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground/75 transition-all hover:bg-teal-tint hover:text-teal"
+                      >
+                        <SecaoIcon className="h-[18px] w-[18px] shrink-0 transition-transform group-hover:scale-110" />
+                        <span className="flex-1 text-left">{dominio.label}</span>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
 
-              {aberta && (
+            {gruposFinais.map(renderGrupo)}
+          </>
+        )}
+
+        {/* Nível 2 — lista de clientes daquela área. */}
+        {vista.nivel === "clientes" &&
+          (() => {
+            const entrada = entradaCliente(vista.dominioKey)
+            if (!entrada) return null
+            return (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setVista({ nivel: "raiz" })}
+                  className="mb-2 flex w-full items-center gap-1.5 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 transition-colors hover:text-teal"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Voltar
+                </button>
+                <p className="flex items-center gap-1.5 px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-teal">
+                  <entrada.dominio.icone className="h-3 w-3" />
+                  {entrada.dominio.label}
+                </p>
                 <ul className="space-y-1">
-                  {clientes.map((cliente) => {
-                    const clienteExpandido = clienteAberto === cliente.key
+                  {entrada.clientes.map((cliente) => {
                     const ClienteIcon = cliente.icone ?? LayoutDashboard
                     return (
                       <li key={cliente.key}>
                         <button
                           type="button"
                           onClick={() =>
-                            setClienteAberto((atual) => (atual === cliente.key ? null : cliente.key))
+                            setVista({ nivel: "cliente", dominioKey: vista.dominioKey, clienteKey: cliente.key })
                           }
-                          aria-expanded={clienteExpandido}
-                          className={cn(
-                            "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
-                            "text-foreground/75 hover:bg-teal-tint hover:text-teal",
-                          )}
+                          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground/75 transition-all hover:bg-teal-tint hover:text-teal"
                         >
                           <ClienteIcon className="h-[18px] w-[18px] shrink-0 transition-transform group-hover:scale-110" />
-                          <span className="flex-1 text-left">{cliente.label}</span>
-                          {clienteExpandido ? (
-                            <ChevronDown className="h-4 w-4 shrink-0" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 shrink-0" />
-                          )}
+                          <span className="flex-1 text-left leading-tight">{cliente.label}</span>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
                         </button>
-
-                        {clienteExpandido && (
-                          <ul className="mt-1 space-y-1 border-l border-navy/10 pl-3">
-                            {cliente.telas.map((tela) => {
-                              const active = pathname === tela.href
-                              const TelaIcon = tela.icone ?? LayoutDashboard
-                              return (
-                                <li key={tela.href}>
-                                  <Link
-                                    href={tela.href}
-                                    onClick={onNavigate}
-                                    className={cn(
-                                      "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all",
-                                      active
-                                        ? "bg-inhaus-grad text-white shadow-[0_10px_24px_-12px_rgba(0,36,67,0.7)]"
-                                        : "text-foreground/75 hover:bg-teal-tint hover:text-teal",
-                                    )}
-                                  >
-                                    <TelaIcon
-                                      className={cn(
-                                        "h-[18px] w-[18px] shrink-0 transition-transform",
-                                        !active && "group-hover:scale-110",
-                                      )}
-                                    />
-                                    <span className="flex-1">{tela.label}</span>
-                                  </Link>
-                                </li>
-                              )
-                            })}
-                          </ul>
-                        )}
                       </li>
                     )
                   })}
                 </ul>
-              )}
-            </div>
-          )
-        })}
+              </div>
+            )
+          })()}
 
-        {gruposFinais.map(renderGrupo)}
+        {/* Nível 3 — telas do cliente escolhido. */}
+        {vista.nivel === "cliente" &&
+          (() => {
+            const entrada = entradaCliente(vista.dominioKey)
+            const cliente = entrada?.clientes.find((c) => c.key === vista.clienteKey)
+            if (!entrada || !cliente) return null
+            return (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setVista({ nivel: "clientes", dominioKey: vista.dominioKey })}
+                  className="mb-2 flex w-full items-center gap-1.5 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 transition-colors hover:text-teal"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  {entrada.dominio.label}
+                </button>
+                <p className="flex items-center gap-1.5 px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-teal">
+                  {(() => {
+                    const ClienteIcon = cliente.icone ?? LayoutDashboard
+                    return <ClienteIcon className="h-3 w-3" />
+                  })()}
+                  {cliente.label}
+                </p>
+                <ul className="space-y-1">
+                  {cliente.telas.map((tela) => {
+                    const active = pathname === tela.href
+                    const TelaIcon = tela.icone ?? LayoutDashboard
+                    return (
+                      <li key={tela.href}>
+                        <Link
+                          href={tela.href}
+                          onClick={onNavigate}
+                          className={cn(
+                            "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                            active
+                              ? "bg-inhaus-grad text-white shadow-[0_10px_24px_-12px_rgba(0,36,67,0.7)]"
+                              : "text-foreground/75 hover:bg-teal-tint hover:text-teal",
+                          )}
+                        >
+                          <TelaIcon
+                            className={cn(
+                              "h-[18px] w-[18px] shrink-0 transition-transform",
+                              !active && "group-hover:scale-110",
+                            )}
+                          />
+                          <span className="flex-1 leading-tight">{tela.label}</span>
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )
+          })()}
       </nav>
 
       <div className="mt-auto border-t border-navy/10 pt-4">
