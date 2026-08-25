@@ -2,6 +2,7 @@ import {
   Activity,
   AlertTriangle,
   BadgeCheck,
+  BarChart3,
   Building2,
   CalendarX,
   ClipboardCheck,
@@ -231,6 +232,13 @@ export const DOMINIOS: Dominio[] = [
         label: "Atlas Copco",
         icone: Building2,
         telas: [
+          {
+            key: "desvios-painel",
+            label: "Painel de Desvios",
+            href: "/dashboards/clientes/atlas/desvios/painel",
+            palavrasChave: ["atlas", "indicadores", "painel", "dashboard", "desvio", "grafico"],
+            icone: BarChart3,
+          },
           {
             key: "desvios-acompanhamento",
             label: "Acompanhamento de Desvios",

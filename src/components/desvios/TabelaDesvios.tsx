@@ -1,8 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { ChevronDown } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Combobox } from "@/components/ui/Combobox"
+import { StatusBadge } from "@/components/desvios/StatusBadge"
 import { STATUS_DESVIO } from "@/lib/desvios/opcoes"
 
 type Desvio = {
@@ -44,8 +47,62 @@ function formatarValor(valor: string | null): string {
   return numero.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 }
 
-function rotuloStatus(status: string): string {
-  return STATUS_DESVIO.find((s) => s.value === status)?.label ?? status
+/** Menu compacto de status por linha: mostra o badge atual e abre as opções (cada uma como badge). */
+function SeletorStatusLinha({
+  status,
+  onChange,
+}: {
+  status: string
+  onChange: (novoStatus: string) => void
+}) {
+  const [aberto, setAberto] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!aberto) return
+    function aoClicarFora(evento: MouseEvent) {
+      if (!ref.current?.contains(evento.target as Node)) setAberto(false)
+    }
+    document.addEventListener("mousedown", aoClicarFora)
+    return () => document.removeEventListener("mousedown", aoClicarFora)
+  }, [aberto])
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setAberto((atual) => !atual)}
+        aria-haspopup="listbox"
+        aria-expanded={aberto}
+        className="flex items-center gap-1 rounded-full hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-teal/20"
+      >
+        <StatusBadge status={status} />
+        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+      </button>
+      {aberto && (
+        <div
+          role="listbox"
+          className="absolute left-0 top-full z-20 mt-1 w-44 space-y-1 rounded-2xl border border-navy/10 bg-white p-1.5 shadow-soft"
+        >
+          {STATUS_DESVIO.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              role="option"
+              aria-selected={s.value === status}
+              onClick={() => {
+                setAberto(false)
+                if (s.value !== status) onChange(s.value)
+              }}
+              className="flex w-full items-center rounded-xl px-1.5 py-1 text-left hover:bg-teal-tint"
+            >
+              <StatusBadge status={s.value} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function TabelaDesvios() {
@@ -103,8 +160,8 @@ export function TabelaDesvios() {
       <div className="grid gap-4 sm:grid-cols-3">
         {STATUS_DESVIO.map((s) => (
           <div key={s.value} className="glass rounded-3xl p-5">
-            <p className="text-sm text-muted-foreground">{s.label}</p>
-            <p className="mt-1 text-2xl font-semibold text-navy">
+            <StatusBadge status={s.value} />
+            <p className="mt-2 text-2xl font-semibold text-navy">
               {dados?.contadores?.[s.value] ?? 0}
             </p>
           </div>
@@ -112,22 +169,19 @@ export function TabelaDesvios() {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value)
+        <Combobox
+          value={status || null}
+          onChange={(v) => {
+            setStatus(v ?? "")
             setPagina(1)
           }}
-          aria-label="Filtrar por status"
-          className="h-10 rounded-xl border border-input bg-white/80 px-3 text-sm text-foreground focus:outline-none focus:border-teal/50 focus:ring-2 focus:ring-teal/20"
-        >
-          <option value="">Todos os status</option>
-          {STATUS_DESVIO.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+          options={STATUS_DESVIO.map((s) => ({ value: s.value, label: s.label }))}
+          placeholder="Todos os status"
+          allowClear
+          clearLabel="Todos os status"
+          ariaLabel="Filtrar por status"
+          className="sm:w-56"
+        />
         <input
           type="text"
           value={busca}
@@ -175,18 +229,10 @@ export function TabelaDesvios() {
                   <td className="px-4 py-3">{item.clienteFinal ?? "—"}</td>
                   <td className="px-4 py-3">{item.motivo ?? "—"}</td>
                   <td className="px-4 py-3">
-                    <select
-                      value={item.status}
-                      onChange={(e) => alterarStatus(item.id, e.target.value)}
-                      aria-label={`Status do desvio ${item.id}`}
-                      className="h-9 rounded-lg border border-input bg-white/80 px-2 text-sm text-foreground focus:outline-none focus:border-teal/50 focus:ring-2 focus:ring-teal/20"
-                    >
-                      {STATUS_DESVIO.map((s) => (
-                        <option key={s.value} value={s.value}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
+                    <SeletorStatusLinha
+                      status={item.status}
+                      onChange={(novoStatus) => alterarStatus(item.id, novoStatus)}
+                    />
                   </td>
                   <td className="px-4 py-3">
                     <Button
