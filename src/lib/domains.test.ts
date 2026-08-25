@@ -8,13 +8,14 @@ import {
 } from "./domains"
 
 describe("registro de dominios", () => {
-  it("registra os cinco dominios da empresa, na ordem", () => {
+  it("registra os dominios da empresa, na ordem (5 internos + Clientes)", () => {
     expect(DOMINIOS.map((d) => d.key)).toEqual([
       "seguranca",
       "rh",
       "qualidade",
       "treinamentos",
       "financeiro",
+      "clientes",
     ])
   })
 
