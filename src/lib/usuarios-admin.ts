@@ -9,6 +9,7 @@
 //
 // Módulo server-only.
 
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import {
   listGlobalAuthUsers,
@@ -113,8 +114,8 @@ export async function criarUsuarioAdmin(input: {
   visibleScreens: string[]
   seguranca: boolean
   classificacao: string
-  clientes: string[]
-  crs: string[]
+  clientes?: string[]
+  crs?: string[]
   contratantes?: number[]
 }): Promise<UsuarioAdmin> {
   const email = normalizeEmail(input.email)
@@ -167,7 +168,7 @@ export async function criarUsuarioAdmin(input: {
     input.classificacao,
     input.clientes,
     input.crs,
-    input.contratantes ?? [],
+    input.contratantes,
   )
 
   return {
@@ -182,8 +183,8 @@ export async function criarUsuarioAdmin(input: {
     visibleScreens: local.visibleScreens,
     ehSeguranca: ehSeg,
     classificacao: input.classificacao,
-    clientes: input.clientes,
-    crs: input.crs,
+    clientes: input.clientes ?? [],
+    crs: input.crs ?? [],
     contratantes: input.contratantes ?? [],
   }
 }
@@ -239,9 +240,9 @@ export async function atualizarAcessoLocal(input: {
     email,
     uuid,
     classe,
-    input.clientes ?? [],
-    input.crs ?? [],
-    input.contratantes ?? [],
+    input.clientes,
+    input.crs,
+    input.contratantes,
   )
 
   return {
@@ -263,40 +264,59 @@ export async function atualizarAcessoLocal(input: {
 }
 
 /**
- * Grava a classificação e SUBSTITUI os vínculos de escopo (cliente/CR) do usuário,
- * em transação. Chave = UUID do global_auth. Sem uuid, não há como amarrar escopo.
+ * Grava a classificação e, quando informados, SUBSTITUI os vínculos de escopo
+ * (cliente/CR/contratante) do usuário, em transação. Chave = UUID do global_auth.
+ * Sem uuid, não há como amarrar escopo. Um vínculo `undefined` fica INTOCADO —
+ * evita apagar escopo existente quando o formulário não envia mais esses campos.
  */
 async function salvarClassificacaoEVinculos(
   email: string,
   uuid: string | null,
   classificacao: string,
-  clientes: string[],
-  crs: string[],
-  contratantes: number[],
+  clientes: string[] | undefined,
+  crs: string[] | undefined,
+  contratantes: number[] | undefined,
 ): Promise<void> {
   await prisma.authUser.update({ where: { email }, data: { classificacao } })
   if (!uuid) return
-  await prisma.$transaction([
-    prisma.authUserCliente.deleteMany({ where: { authUserId: uuid } }),
-    prisma.authUserCr.deleteMany({ where: { authUserId: uuid } }),
-    prisma.authUserContratante.deleteMany({ where: { authUserId: uuid } }),
-    ...(clientes.length
-      ? [prisma.authUserCliente.createMany({
+
+  const ops: Prisma.PrismaPromise<unknown>[] = []
+
+  if (clientes !== undefined) {
+    ops.push(prisma.authUserCliente.deleteMany({ where: { authUserId: uuid } }))
+    if (clientes.length) {
+      ops.push(
+        prisma.authUserCliente.createMany({
           data: clientes.map((nomeGrpCliente) => ({ authUserId: uuid, nomeGrpCliente })),
           skipDuplicates: true,
-        })]
-      : []),
-    ...(crs.length
-      ? [prisma.authUserCr.createMany({
+        }),
+      )
+    }
+  }
+
+  if (crs !== undefined) {
+    ops.push(prisma.authUserCr.deleteMany({ where: { authUserId: uuid } }))
+    if (crs.length) {
+      ops.push(
+        prisma.authUserCr.createMany({
           data: crs.map((cr) => ({ authUserId: uuid, cr })),
           skipDuplicates: true,
-        })]
-      : []),
-    ...(contratantes.length
-      ? [prisma.authUserContratante.createMany({
+        }),
+      )
+    }
+  }
+
+  if (contratantes !== undefined) {
+    ops.push(prisma.authUserContratante.deleteMany({ where: { authUserId: uuid } }))
+    if (contratantes.length) {
+      ops.push(
+        prisma.authUserContratante.createMany({
           data: contratantes.map((contratanteId) => ({ authUserId: uuid, contratanteId })),
           skipDuplicates: true,
-        })]
-      : []),
-  ])
+        }),
+      )
+    }
+  }
+
+  if (ops.length) await prisma.$transaction(ops)
 }

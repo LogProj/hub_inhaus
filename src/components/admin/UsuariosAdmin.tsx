@@ -16,12 +16,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MultiCombobox } from "@/components/ui/MultiCombobox"
 import { SeletorTelas } from "@/components/admin/SeletorTelas"
 import { ToastProvider, useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
-
-type Opcao = { value: string; label: string }
 
 type UsuarioAdmin = {
   authUserId: string | null
@@ -65,35 +62,6 @@ function Conteudo({ meuEmail }: Props) {
   const [pagina, setPagina] = React.useState(1)
   const [criando, setCriando] = React.useState(false)
   const [editando, setEditando] = React.useState<string | null>(null)
-  const [clienteOptions, setClienteOptions] = React.useState<Opcao[]>([])
-  const [crOptions, setCrOptions] = React.useState<Opcao[]>([])
-  const [contratanteOptions, setContratanteOptions] = React.useState<Opcao[]>([])
-
-  React.useEffect(() => {
-    fetch("/api/admin/clientes-crs", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { clientes: [], crs: [] }))
-      .then((d) => {
-        setClienteOptions((d.clientes ?? []).map((c: string) => ({ value: c, label: c })))
-        setCrOptions(
-          (d.crs ?? []).map((x: { cr: string; descricao: string | null; cliente: string | null }) => ({
-            value: x.cr,
-            label: `${x.cr} · ${x.descricao ?? x.cliente ?? ""}`.trim(),
-          })),
-        )
-      })
-      .catch(() => {})
-    fetch("/api/admin/contratantes", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { contratantes: [] }))
-      .then((d) =>
-        setContratanteOptions(
-          (d.contratantes ?? []).map((c: { id: number; nome: string }) => ({
-            value: String(c.id),
-            label: c.nome,
-          })),
-        ),
-      )
-      .catch(() => {})
-  }, [])
 
   const carregar = React.useCallback(async () => {
     setCarregando(true)
@@ -159,9 +127,6 @@ function Conteudo({ meuEmail }: Props) {
 
       {criando && (
         <FormularioCriar
-          clienteOptions={clienteOptions}
-          crOptions={crOptions}
-          contratanteOptions={contratanteOptions}
           onCancelar={() => setCriando(false)}
           onCriado={() => {
             setCriando(false)
@@ -241,9 +206,6 @@ function Conteudo({ meuEmail }: Props) {
                           <td colSpan={8} className="px-3 pb-4">
                             <EditorAcesso
                               usuario={u}
-                              clienteOptions={clienteOptions}
-                              crOptions={crOptions}
-                              contratanteOptions={contratanteOptions}
                               ehEuMesmo={!!meuEmail && meuEmail.toLowerCase() === u.email.toLowerCase()}
                               onSalvo={() => {
                                 setEditando(null)
@@ -293,15 +255,9 @@ function Selo({ on, rotuloOn, rotuloOff }: { on: boolean; rotuloOn: string; rotu
 }
 
 function FormularioCriar({
-  clienteOptions,
-  crOptions,
-  contratanteOptions,
   onCancelar,
   onCriado,
 }: {
-  clienteOptions: Opcao[]
-  crOptions: Opcao[]
-  contratanteOptions: Opcao[]
   onCancelar: () => void
   onCriado: () => void
 }) {
@@ -313,19 +269,16 @@ function FormularioCriar({
   const [isAdmin, setIsAdmin] = React.useState(false)
   const [seguranca, setSeguranca] = React.useState(false)
   const [telas, setTelas] = React.useState<string[]>([])
-  const [classificacao, setClassificacao] = React.useState<"INTERNO" | "CLIENTE">("INTERNO")
-  const [clientes, setClientes] = React.useState<string[]>([])
-  const [crs, setCrs] = React.useState<string[]>([])
-  const [contratantes, setContratantes] = React.useState<string[]>([])
+  const [ehCliente, setEhCliente] = React.useState(false)
   const [ocupado, setOcupado] = React.useState(false)
 
-  const escopoOk = classificacao !== "CLIENTE" || clientes.length > 0 || crs.length > 0
+  const classificacao: "INTERNO" | "CLIENTE" = ehCliente ? "CLIENTE" : "INTERNO"
   const podeSalvar =
-    nome.trim() && email.trim() && cpf.replace(/\D/g, "").length === 11 && senha.length >= 8 && escopoOk
+    nome.trim() && email.trim() && cpf.replace(/\D/g, "").length === 11 && senha.length >= 8
 
   React.useEffect(() => {
-    if (classificacao === "CLIENTE" && isAdmin) setIsAdmin(false)
-  }, [classificacao, isAdmin])
+    if (ehCliente && isAdmin) setIsAdmin(false)
+  }, [ehCliente, isAdmin])
 
   async function salvar() {
     setOcupado(true)
@@ -343,9 +296,6 @@ function FormularioCriar({
           hasAccess: true,
           visibleScreens: telas,
           classificacao,
-          clientes,
-          crs,
-          contratantes: contratantes.map(Number),
         }),
       })
       const d = await r.json()
@@ -382,54 +332,18 @@ function FormularioCriar({
           <SeletorTelas value={telas} onChange={setTelas} />
           <p className="mt-1.5 text-xs text-muted-foreground">Administradores veem todas as telas.</p>
         </Campo>
-        <Campo rotulo="Classificação">
-          <select
-            value={classificacao}
-            onChange={(e) => setClassificacao(e.target.value as "INTERNO" | "CLIENTE")}
-            className="h-9 w-full rounded-lg border border-navy/15 bg-white px-3 text-sm text-navy"
-          >
-            <option value="INTERNO">Interno (equipe In-Haus)</option>
-            <option value="CLIENTE">Cliente (externo, escopo travado)</option>
-          </select>
-        </Campo>
-        <Campo rotulo="Clientes (escopo de dados)">
-          <MultiCombobox
-            values={clientes}
-            onChange={setClientes}
-            options={clienteOptions}
-            placeholder="Escolha os clientes…"
-            ariaLabel="Clientes"
-          />
-        </Campo>
-        <Campo rotulo="CRs avulsos (escopo)">
-          <MultiCombobox
-            values={crs}
-            onChange={setCrs}
-            options={crOptions}
-            placeholder="Escolha os CRs…"
-            ariaLabel="CRs"
-          />
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            CRs efetivos: {crs.length} avulso(s), {clientes.length} cliente(s)
-          </p>
-        </Campo>
-        <Campo rotulo="Cliente(s) contratante(s)">
-          <MultiCombobox
-            values={contratantes}
-            onChange={setContratantes}
-            options={contratanteOptions}
-            placeholder="Cliente(s) contratante(s)…"
-            ariaLabel="Cliente contratante"
-          />
-        </Campo>
         <div className="flex flex-col justify-end gap-2">
+          <label className="flex items-center gap-2 text-sm text-navy">
+            <Checkbox checked={ehCliente} onCheckedChange={(v) => setEhCliente(!!v)} />
+            É cliente?
+          </label>
           <label
-            className={cn("flex items-center gap-2 text-sm text-navy", classificacao === "CLIENTE" && "opacity-50")}
-            title={classificacao === "CLIENTE" ? "Usuário CLIENTE não pode ser administrador" : undefined}
+            className={cn("flex items-center gap-2 text-sm text-navy", ehCliente && "opacity-50")}
+            title={ehCliente ? "Usuário CLIENTE não pode ser administrador" : undefined}
           >
             <Checkbox
               checked={isAdmin}
-              disabled={classificacao === "CLIENTE"}
+              disabled={ehCliente}
               onCheckedChange={(v) => setIsAdmin(!!v)}
             />
             É administrador (vê tudo e gerencia usuários)
@@ -452,16 +366,10 @@ function FormularioCriar({
 
 function EditorAcesso({
   usuario,
-  clienteOptions,
-  crOptions,
-  contratanteOptions,
   ehEuMesmo,
   onSalvo,
 }: {
   usuario: UsuarioAdmin
-  clienteOptions: Opcao[]
-  crOptions: Opcao[]
-  contratanteOptions: Opcao[]
   ehEuMesmo: boolean
   onSalvo: () => void
 }) {
@@ -470,21 +378,14 @@ function EditorAcesso({
   const [isAdmin, setIsAdmin] = React.useState(usuario.isAdmin)
   const [seguranca, setSeguranca] = React.useState(usuario.ehSeguranca)
   const [telas, setTelas] = React.useState<string[]>(usuario.visibleScreens)
-  const [classificacao, setClassificacao] = React.useState<"INTERNO" | "CLIENTE">(
-    (usuario.classificacao as "INTERNO" | "CLIENTE") ?? "INTERNO",
-  )
-  const [clientes, setClientes] = React.useState<string[]>(usuario.clientes ?? [])
-  const [crs, setCrs] = React.useState<string[]>(usuario.crs ?? [])
-  const [contratantes, setContratantes] = React.useState<string[]>(
-    (usuario.contratantes ?? []).map(String),
-  )
+  const [ehCliente, setEhCliente] = React.useState(usuario.classificacao === "CLIENTE")
   const [ocupado, setOcupado] = React.useState(false)
 
-  const escopoOk = classificacao !== "CLIENTE" || clientes.length > 0 || crs.length > 0
+  const classificacao: "INTERNO" | "CLIENTE" = ehCliente ? "CLIENTE" : "INTERNO"
 
   React.useEffect(() => {
-    if (classificacao === "CLIENTE" && isAdmin) setIsAdmin(false)
-  }, [classificacao, isAdmin])
+    if (ehCliente && isAdmin) setIsAdmin(false)
+  }, [ehCliente, isAdmin])
 
   async function salvar() {
     setOcupado(true)
@@ -501,9 +402,6 @@ function EditorAcesso({
           seguranca,
           visibleScreens: telas,
           classificacao,
-          clientes,
-          crs,
-          contratantes: contratantes.map(Number),
         }),
       })
       const d = await r.json()
@@ -525,12 +423,12 @@ function EditorAcesso({
           Tem acesso ao hub
         </label>
         <label
-          className={cn("flex items-center gap-2 text-sm text-navy", classificacao === "CLIENTE" && "opacity-50")}
-          title={classificacao === "CLIENTE" ? "Usuário CLIENTE não pode ser administrador" : undefined}
+          className={cn("flex items-center gap-2 text-sm text-navy", ehCliente && "opacity-50")}
+          title={ehCliente ? "Usuário CLIENTE não pode ser administrador" : undefined}
         >
           <Checkbox
             checked={isAdmin}
-            disabled={ehEuMesmo || classificacao === "CLIENTE"}
+            disabled={ehEuMesmo || ehCliente}
             onCheckedChange={(v) => setIsAdmin(!!v)}
           />
           Administrador
@@ -546,6 +444,10 @@ function EditorAcesso({
           />
           Segurança (configura o EPI)
         </label>
+        <label className="flex items-center gap-2 text-sm text-navy">
+          <Checkbox checked={ehCliente} onCheckedChange={(v) => setEhCliente(!!v)} />
+          É cliente?
+        </label>
         {ehEuMesmo && (
           <span className="text-xs text-muted-foreground">Você não pode revogar o próprio acesso/admin.</span>
         )}
@@ -557,59 +459,8 @@ function EditorAcesso({
           <p className="mt-1.5 text-xs text-muted-foreground">Como administrador, este usuário vê todas as telas.</p>
         )}
       </div>
-      <div className="mt-3 grid gap-4 sm:grid-cols-3">
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-navy">Classificação</label>
-          <select
-            value={classificacao}
-            onChange={(e) => setClassificacao(e.target.value as "INTERNO" | "CLIENTE")}
-            className="h-9 w-full rounded-lg border border-navy/15 bg-white px-3 text-sm text-navy"
-          >
-            <option value="INTERNO">Interno (equipe In-Haus)</option>
-            <option value="CLIENTE">Cliente (externo, escopo travado)</option>
-          </select>
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-navy">Clientes (escopo de dados)</label>
-          <MultiCombobox
-            values={clientes}
-            onChange={setClientes}
-            options={clienteOptions}
-            placeholder="Escolha os clientes…"
-            ariaLabel="Clientes"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-navy">CRs avulsos (escopo)</label>
-          <MultiCombobox
-            values={crs}
-            onChange={setCrs}
-            options={crOptions}
-            placeholder="Escolha os CRs…"
-            ariaLabel="CRs"
-          />
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            CRs efetivos: {crs.length} avulso(s), {clientes.length} cliente(s)
-          </p>
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-navy">Cliente(s) contratante(s)</label>
-          <MultiCombobox
-            values={contratantes}
-            onChange={setContratantes}
-            options={contratanteOptions}
-            placeholder="Cliente(s) contratante(s)…"
-            ariaLabel="Cliente contratante"
-          />
-        </div>
-      </div>
-      {!escopoOk && (
-        <p className="mt-2 text-xs text-amber-700">
-          Usuário CLIENTE precisa de ao menos um cliente ou CR vinculado.
-        </p>
-      )}
       <div className="mt-4 flex items-center justify-end">
-        <Button type="button" variant="gradient" size="sm" onClick={salvar} disabled={ocupado || !escopoOk}>
+        <Button type="button" variant="gradient" size="sm" onClick={salvar} disabled={ocupado}>
           {ocupado ? "Salvando…" : "Salvar acesso"}
         </Button>
       </div>
