@@ -95,7 +95,7 @@ export function FiltrosCapacitacao({ opcoes, atual }: { opcoes: OpcoesCapacitaca
       </div>
 
       {aberto && (
-        <div className="absolute left-0 top-full z-40 mt-2 w-[min(92vw,60rem)] rounded-3xl border border-navy/10 bg-white p-5 shadow-soft">
+        <div className="absolute right-0 top-full z-40 mt-2 w-[min(92vw,60rem)] rounded-3xl border border-navy/10 bg-white p-5 shadow-soft">
           <div className="mb-4 flex items-center justify-between">
             <span className="flex items-center gap-2 text-sm font-medium text-navy">
               <SlidersHorizontal className="h-4 w-4 text-teal" />

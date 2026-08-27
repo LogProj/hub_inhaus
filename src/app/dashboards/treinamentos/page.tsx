@@ -6,6 +6,7 @@ import { getControleCapacitacao, type Capacitacao } from "@/lib/capacitacao"
 import { FiltrosCapacitacao } from "@/components/treinamentos/FiltrosCapacitacao"
 import { BarrasCapacitacao } from "@/components/treinamentos/BarrasCapacitacao"
 import { InfoCapacitacao } from "@/components/treinamentos/InfoCapacitacao"
+import { BotaoFullscreen } from "@/components/treinamentos/BotaoFullscreen"
 import { TabelaTreinamentos } from "@/components/treinamentos/TabelaTreinamentos"
 import { LinhaQuadro } from "@/components/dashboard/LinhaQuadro"
 
@@ -92,22 +93,33 @@ export default async function ControleCapacitacaoPage({ searchParams }: { search
   }
 
   return (
-    <div className="space-y-8">
-      <section className="reveal">
-        <span className="eyebrow">
-          <GraduationCap className="h-3.5 w-3.5" />
-          Treinamentos
-        </span>
-        <div className="mt-4 flex items-center gap-3">
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Controle de Capacitação
-          </h1>
-          <InfoCapacitacao />
+    <div
+      id="painel-capacitacao"
+      className="space-y-6 [&:fullscreen]:overflow-y-auto [&:fullscreen]:bg-background [&:fullscreen]:p-8"
+    >
+      <section className="reveal flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <span className="eyebrow">
+            <GraduationCap className="h-3.5 w-3.5" />
+            Treinamentos
+          </span>
+          <div className="mt-4 flex items-center gap-3">
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              Controle de Capacitação
+            </h1>
+            <InfoCapacitacao />
+          </div>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Visão gerencial dos treinamentos realizados — pessoas capacitadas e horas de treinamento, por
+            mês, cliente, CR, cargo e responsável.
+          </p>
         </div>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Visão gerencial dos treinamentos realizados — pessoas capacitadas e horas de treinamento, por
-          mês, cliente, CR, cargo e responsável.
-        </p>
+
+        {/* Ações à direita: filtros + tela cheia (TV). Liberam o espaço vertical acima dos cards. */}
+        <div className="flex items-center gap-2">
+          {dados && <FiltrosCapacitacao opcoes={dados.opcoes} atual={filtros} />}
+          <BotaoFullscreen alvoId="painel-capacitacao" />
+        </div>
       </section>
 
       {!dados ? (
@@ -116,8 +128,6 @@ export default async function ControleCapacitacaoPage({ searchParams }: { search
         </div>
       ) : (
         <>
-          <FiltrosCapacitacao opcoes={dados.opcoes} atual={filtros} />
-
           {/* Cards principais */}
           <section className="grid grid-cols-2 gap-5 lg:grid-cols-4">
             <CardKpi
@@ -162,28 +172,17 @@ export default async function ControleCapacitacaoPage({ searchParams }: { search
             )}
           </section>
 
-          {/* Rankings */}
-          <section className="grid gap-5 lg:grid-cols-2">
+          {/* Rankings lado a lado */}
+          <section className="grid gap-5 lg:grid-cols-3">
             <Painel titulo="Horas e pessoas por CR" icone={Building2} temDados={dados.porCr.length > 0} vazio="Sem dados de CR no recorte.">
-              <BarrasCapacitacao dados={dados.porCr} sufixo="horas" sufixoSecundario="pessoas" larguraRotulo={220} maxRotulo={0} />
+              <BarrasCapacitacao dados={dados.porCr} sufixo="horas" sufixoSecundario="pessoas" larguraRotulo={130} maxRotulo={16} />
             </Painel>
             <Painel titulo="Horas por cargo" icone={Briefcase} temDados={dados.porCargo.length > 0} vazio="Sem dados de cargo no recorte.">
-              <BarrasCapacitacao dados={dados.porCargo} sufixo="horas" sufixoSecundario="presenças" larguraRotulo={200} />
+              <BarrasCapacitacao dados={dados.porCargo} sufixo="horas" sufixoSecundario="presenças" larguraRotulo={130} maxRotulo={16} />
             </Painel>
-          </section>
-
-          <section className="glass reveal rounded-3xl p-6">
-            <h3 className="mb-4 flex items-center gap-2 font-semibold text-navy">
-              <BookOpen className="h-4 w-4 text-teal" />
-              Horas por treinamento
-            </h3>
-            {dados.porTreinamento.length > 0 ? (
-              <div className="max-h-[420px] overflow-y-auto pr-1">
-                <BarrasCapacitacao dados={dados.porTreinamento} sufixo="horas" sufixoSecundario="presenças" larguraRotulo={240} maxRotulo={0} />
-              </div>
-            ) : (
-              <p className="text-sm text-navy/60">Sem treinamentos no recorte.</p>
-            )}
+            <Painel titulo="Horas por treinamento" icone={BookOpen} temDados={dados.porTreinamento.length > 0} vazio="Sem treinamentos no recorte.">
+              <BarrasCapacitacao dados={dados.porTreinamento} sufixo="horas" sufixoSecundario="presenças" larguraRotulo={130} maxRotulo={16} />
+            </Painel>
           </section>
 
           {/* Tabela */}
