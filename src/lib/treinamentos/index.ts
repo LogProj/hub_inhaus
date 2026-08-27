@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { gerarToken } from "@/lib/epi/tokens"
 import { resolverColaboradorPorCpf } from "@/lib/treinamentos/colaborador"
-import { hmacCpf } from "@/lib/epi/cpf"
+import { hmacCpf, normalizarCpf } from "@/lib/epi/cpf"
 
 /**
  * Regras de negócio do módulo de TREINAMENTOS.
@@ -45,6 +45,7 @@ export async function listarTreinamentos() {
     data: t.data,
     duracaoHoras: Number(t.duracaoHoras),
     responsavel: t.responsavel.nome,
+    responsavelId: t.responsavelId,
     status: t.status,
     tokenPublico: t.tokenPublico,
     presencas: t._count.presencas,
@@ -70,6 +71,21 @@ export async function criarTreinamento(entrada: {
   })
 }
 
+export async function editarTreinamento(
+  id: string,
+  entrada: { nome: string; data: string; duracaoHoras: number; responsavelId: string },
+) {
+  return prisma.treinamento.update({
+    where: { id },
+    data: {
+      nome: entrada.nome,
+      data: new Date(entrada.data),
+      duracaoHoras: entrada.duracaoHoras,
+      responsavelId: entrada.responsavelId,
+    },
+  })
+}
+
 export async function encerrarTreinamento(id: string) {
   return prisma.treinamento.update({ where: { id }, data: { status: "ENCERRADO" } })
 }
@@ -89,6 +105,7 @@ export async function getTreinamentoComPresencas(id: string) {
     data: t.data,
     duracaoHoras: Number(t.duracaoHoras),
     responsavel: t.responsavel.nome,
+    responsavelId: t.responsavelId,
     status: t.status,
     tokenPublico: t.tokenPublico,
     presencas: t.presencas,
@@ -161,6 +178,9 @@ export async function confirmarPresenca(
         cargo: colaborador?.cargo ?? null,
         matricula: colaborador?.matricula ?? null,
         localizadoNaSra: colaborador !== null,
+        // Guarda o CPF em claro SÓ de quem não foi localizado — é o único jeito de o
+        // RH identificar depois quem é. Para localizados fica null.
+        cpfTexto: colaborador === null ? normalizarCpf(cpf) : null,
       },
     })
     return {

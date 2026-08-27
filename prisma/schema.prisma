@@ -459,6 +459,9 @@ model TreinamentoPresenca {
   cargo           String?
   matricula       String?
   localizadoNaSra Boolean     @map("localizado_na_sra")
+  // CPF em claro APENAS para quem não foi localizado na SRA (para o RH identificar
+  // quem é). Para localizados fica null — a identidade continua sendo só o hash.
+  cpfTexto        String?     @map("cpf_texto")
   confirmadoEm    DateTime    @default(now()) @map("confirmado_em")
   treinamento     Treinamento @relation(fields: [treinamentoId], references: [id], onDelete: Cascade)
 

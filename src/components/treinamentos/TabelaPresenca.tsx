@@ -7,7 +7,15 @@ type Presenca = {
   cargo: string | null
   matricula: string | null
   localizadoNaSra: boolean
+  cpfTexto: string | null
   confirmadoEm: Date
+}
+
+/** Formata 11 dígitos como 000.000.000-00. */
+function formatarCpf(cpf: string | null): string {
+  const d = (cpf ?? "").replace(/\D/g, "")
+  if (d.length !== 11) return cpf ?? "—"
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
 }
 
 export function TabelaPresenca({ presencas }: { presencas: Presenca[] }) {
@@ -20,6 +28,7 @@ export function TabelaPresenca({ presencas }: { presencas: Presenca[] }) {
         <thead className="text-left text-navy/60">
           <tr>
             <th className="py-2 pr-4">Colaborador</th>
+            <th className="py-2 pr-4">CPF</th>
             <th className="py-2 pr-4">Unidade (CR)</th>
             <th className="py-2 pr-4">Cargo</th>
             <th className="py-2 pr-4">Matrícula</th>
@@ -37,6 +46,10 @@ export function TabelaPresenca({ presencas }: { presencas: Presenca[] }) {
                     não localizado na SRA
                   </span>
                 )}
+              </td>
+              <td className="py-2 pr-4">
+                {/* CPF só aparece para quem não foi localizado na SRA (identificação). */}
+                {!p.localizadoNaSra && p.cpfTexto ? formatarCpf(p.cpfTexto) : "—"}
               </td>
               <td className="py-2 pr-4">{p.crNome ? tituloNome(p.crNome) : "—"}</td>
               <td className="py-2 pr-4">{p.cargo ? tituloNome(p.cargo) : "—"}</td>

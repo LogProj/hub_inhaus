@@ -186,10 +186,10 @@ export const DOMINIOS: Dominio[] = [
     telas: [
       {
         key: "treinamentos-visao-geral",
-        label: "Visão geral",
+        label: "Controle de Capacitação",
         href: "/dashboards/treinamentos",
+        palavrasChave: ["capacitacao", "horas", "treinados", "hht", "carga horaria", "per capita", "gerencial"],
         icone: LayoutDashboard,
-        emBreve: true,
       },
       {
         key: "matriz-competencias",

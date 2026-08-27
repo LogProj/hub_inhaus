@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Combobox } from "@/components/ui/Combobox"
 
 type Responsavel = { id: string; nome: string }
 
 export function CriarTreinamento({ responsaveis }: { responsaveis: Responsavel[] }) {
   const router = useRouter()
+  const [aberto, setAberto] = useState(false)
   const [nome, setNome] = useState("")
   const [data, setData] = useState("")
   const [duracaoHoras, setDuracao] = useState("")
@@ -38,9 +40,16 @@ export function CriarTreinamento({ responsaveis }: { responsaveis: Responsavel[]
     }
   }
 
+  if (!aberto) {
+    return <Button onClick={() => setAberto(true)}>Novo treinamento</Button>
+  }
+
   return (
     <form onSubmit={criar} className="glass rounded-3xl p-6 space-y-4">
-      <h3 className="font-semibold text-navy">Novo treinamento</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-navy">Novo treinamento</h3>
+        <Button type="button" variant="ghost" onClick={() => setAberto(false)}>Fechar</Button>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1 sm:col-span-2">
           <Label htmlFor="nome">Nome</Label>
@@ -55,18 +64,14 @@ export function CriarTreinamento({ responsaveis }: { responsaveis: Responsavel[]
           <Input id="dur" type="number" step="0.5" min="0.5" value={duracaoHoras} onChange={(e) => setDuracao(e.target.value)} />
         </div>
         <div className="space-y-1 sm:col-span-2">
-          <Label htmlFor="resp">Responsável</Label>
-          <select
-            id="resp"
-            className="w-full rounded-xl border border-navy/20 bg-white/80 px-3 py-2 text-navy"
-            value={responsavelId}
-            onChange={(e) => setResponsavelId(e.target.value)}
-          >
-            <option value="">Selecione…</option>
-            {responsaveis.map((r) => (
-              <option key={r.id} value={r.id}>{r.nome}</option>
-            ))}
-          </select>
+          <Label>Responsável</Label>
+          <Combobox
+            value={responsavelId || null}
+            onChange={(v) => setResponsavelId(v ?? "")}
+            options={responsaveis.map((r) => ({ value: r.id, label: r.nome }))}
+            placeholder="Selecione o responsável"
+            ariaLabel="Responsável pelo treinamento"
+          />
         </div>
       </div>
       {erro && <p className="text-sm text-red-600">{erro}</p>}
