@@ -20,7 +20,8 @@ export const ROTA_INICIAL = "/dashboards"
 // `/home` é a landing (hero) pública, preservada fora do fluxo principal.
 // (v2: o preenchimento público de EPI por QR/CPF foi removido — quem registra a
 // utilização é o líder, logado. Ver docs/versoes/…-v1 para o fluxo antigo.)
-const rotasPublicas = ["/login", "/home"]
+// `/t/<token>` é o preenchimento público de presença em treinamento (QR + CPF).
+const rotasPublicas = ["/login", "/home", "/t"]
 
 /**
  * Acesso livre de desenvolvimento. A checagem é repetida aqui em vez de
