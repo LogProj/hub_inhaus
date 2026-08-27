@@ -112,6 +112,18 @@ export type ResultadoConfirmacao =
   | { estado: "confirmado"; nome: string; jaEstava: boolean; localizado: boolean }
 
 /**
+ * Só o PRIMEIRO nome, capitalizado. A confirmação é uma rota pública (só precisa do
+ * link do QR): devolver o nome completo permitiria varrer CPFs e colher o nome inteiro
+ * de qualquer pessoa do quadro. O primeiro nome basta para a saudação e vaza bem menos.
+ */
+function primeiroNome(nome: string | null): string {
+  const limpo = (nome ?? "").trim()
+  if (!limpo) return "colaborador"
+  const p = limpo.split(/\s+/)[0]
+  return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+}
+
+/**
  * Confirma a presença pelo token público + CPF. Idempotente: se a pessoa já confirmou,
  * devolve jaEstava=true sem duplicar. CPF fora do quadro grava localizadoNaSra=false.
  */
@@ -132,28 +144,48 @@ export async function confirmarPresenca(
   if (existente) {
     return {
       estado: "confirmado",
-      nome: existente.nomeColab ?? "colaborador",
+      nome: primeiroNome(existente.nomeColab),
       jaEstava: true,
       localizado: existente.localizadoNaSra,
     }
   }
 
-  const criada = await prisma.treinamentoPresenca.create({
-    data: {
-      treinamentoId: t.id,
-      cpfHash,
-      nomeColab: colaborador?.nome ?? null,
-      crCod: colaborador?.crCod ?? null,
-      crNome: colaborador?.crNome ?? null,
-      cargo: colaborador?.cargo ?? null,
-      matricula: colaborador?.matricula ?? null,
-      localizadoNaSra: colaborador !== null,
-    },
-  })
-  return {
-    estado: "confirmado",
-    nome: criada.nomeColab ?? "colaborador",
-    jaEstava: false,
-    localizado: criada.localizadoNaSra,
+  try {
+    const criada = await prisma.treinamentoPresenca.create({
+      data: {
+        treinamentoId: t.id,
+        cpfHash,
+        nomeColab: colaborador?.nome ?? null,
+        crCod: colaborador?.crCod ?? null,
+        crNome: colaborador?.crNome ?? null,
+        cargo: colaborador?.cargo ?? null,
+        matricula: colaborador?.matricula ?? null,
+        localizadoNaSra: colaborador !== null,
+      },
+    })
+    return {
+      estado: "confirmado",
+      nome: primeiroNome(criada.nomeColab),
+      jaEstava: false,
+      localizado: criada.localizadoNaSra,
+    }
+  } catch (e) {
+    // Corrida: dois POSTs do mesmo CPF passaram juntos pelo findUnique acima e o
+    // segundo bateu no unique (treinamentoId + cpfHash). Tratamos como "já estava"
+    // em vez de erro — o dado continua com 1 presença só.
+    if ((e as { code?: string })?.code === "P2002") {
+      const jaCriada = await prisma.treinamentoPresenca.findUnique({
+        where: { treinamentoId_cpfHash: { treinamentoId: t.id, cpfHash } },
+      })
+      if (jaCriada) {
+        return {
+          estado: "confirmado",
+          nome: primeiroNome(jaCriada.nomeColab),
+          jaEstava: true,
+          localizado: jaCriada.localizadoNaSra,
+        }
+      }
+    }
+    throw e
   }
 }

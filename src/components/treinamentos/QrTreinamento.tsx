@@ -24,11 +24,15 @@ export function QrTreinamento({ token, nome }: { token: string; nome: string }) 
     const janela = window.open("", "_blank", "width=480,height=640")
     if (!janela) return
     const canvas = document.querySelector("#qr-treino canvas") as HTMLCanvasElement | null
+    // Escapa o nome (definido pelo usuário) antes de injetar no HTML da janela de impressão.
+    const seguro = (t: string) =>
+      t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!))
+    const nomeSeguro = seguro(nome)
     janela.document.write(
-      `<html><head><title>${nome}</title></head><body style="font-family:sans-serif;text-align:center;padding:24px">
-       <h2>${nome}</h2><p>Aponte a câmera para registrar presença</p>
+      `<html><head><title>${nomeSeguro}</title></head><body style="font-family:sans-serif;text-align:center;padding:24px">
+       <h2>${nomeSeguro}</h2><p>Aponte a câmera para registrar presença</p>
        <img src="${canvas?.toDataURL() ?? ""}" style="width:280px"/>
-       <p style="font-size:12px;color:#555">${url}</p></body></html>`,
+       <p style="font-size:12px;color:gray">${seguro(url)}</p></body></html>`,
     )
     janela.document.close()
     janela.focus()
