@@ -316,6 +316,27 @@ export const DOMINIOS: Dominio[] = [
           },
         ],
       },
+      {
+        key: "enjoei",
+        label: "Enjoei",
+        icone: Building2,
+        telas: [
+          {
+            key: "enjoei-turnover",
+            label: "Turnover",
+            href: "/dashboards/clientes/enjoei/turnover",
+            palavrasChave: ["enjoei", "rotatividade", "desligamento", "admissao", "headcount", "turnover"],
+            icone: Repeat,
+          },
+          {
+            key: "enjoei-absenteismo",
+            label: "Absenteísmo",
+            href: "/dashboards/clientes/enjoei/absenteismo",
+            palavrasChave: ["enjoei", "falta", "presenca", "ponto", "aderencia", "absenteismo"],
+            icone: CalendarX,
+          },
+        ],
+      },
     ],
   },
 ]

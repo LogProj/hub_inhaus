@@ -57,6 +57,11 @@ const config: Config = {
           soft: "#4FA8C4",
           tint: "#E6F3F6",
         },
+        // Marca do cliente Enjoei (portal do cliente).
+        enjoei: {
+          DEFAULT: "#61005D",
+          mist: "#F0E6EF",
+        },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
@@ -78,6 +83,7 @@ const config: Config = {
         "inhaus-radial":
           "radial-gradient(120% 120% at 0% 0%, #F2F3F8 0%, #FFFFFF 38%, #EAF3F6 100%)",
         "inhaus-grad": "linear-gradient(135deg, #002443 0%, #023A54 55%, #027193 100%)",
+        "enjoei-grad": "linear-gradient(135deg, #61005D 0%, #8E2589 100%)",
       },
       keyframes: {
         "fade-up": {
