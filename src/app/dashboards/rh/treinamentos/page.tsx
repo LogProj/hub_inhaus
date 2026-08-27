@@ -18,8 +18,10 @@ export default async function TreinamentosPage() {
         <InfoTreinamentos />
       </div>
 
-      <CriarTreinamento responsaveis={responsaveis} />
-      <ConfigResponsaveis responsaveis={responsaveis} />
+      <div className="space-y-3">
+        <div><CriarTreinamento responsaveis={responsaveis} /></div>
+        <div><ConfigResponsaveis responsaveis={responsaveis} /></div>
+      </div>
 
       <div className="glass rounded-3xl p-6">
         <h3 className="mb-4 font-semibold text-navy">Treinamentos registrados</h3>

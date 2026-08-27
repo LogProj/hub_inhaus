@@ -36,19 +36,20 @@ export function QrTreinamento({ token, nome }: { token: string; nome: string }) 
   }
 
   function imprimir() {
+    // Captura o PNG do QR ANTES de abrir a janela (o canvas está no documento atual).
+    const canvas = document.querySelector("#qr-treino canvas") as HTMLCanvasElement | null
+    const dataUrl = canvas?.toDataURL("image/png") ?? ""
     const janela = window.open("", "_blank", "width=480,height=640")
     if (!janela) return
-    const canvas = document.querySelector("#qr-treino canvas") as HTMLCanvasElement | null
     const nomeSeguro = escapar(nome)
+    // Só imprime DEPOIS que a imagem do QR carregar (senão sai em branco).
     janela.document.write(
       `<html><head><title>${nomeSeguro}</title></head><body style="font-family:sans-serif;text-align:center;padding:24px">
        <h2>${nomeSeguro}</h2><p>Aponte a câmera para registrar presença</p>
-       <img src="${canvas?.toDataURL() ?? ""}" style="width:280px"/>
+       <img src="${dataUrl}" style="width:280px" onload="window.focus();window.print()" onerror="window.print()"/>
        <p style="font-size:12px;color:gray">${escapar(url)}</p></body></html>`,
     )
     janela.document.close()
-    janela.focus()
-    janela.print()
   }
 
   return (
