@@ -269,6 +269,13 @@ compartilhado** (`db_inhaus`). Esse banco guarda, no schema `public`, tanto as t
   `prisma/sql/` → aplicar no banco → `prisma generate` (só gera o Client, não toca no banco).
 - O Prisma Client lê/escreve normalmente em tabelas criadas à mão, desde que batam com os models.
 
+**Convenção de nomes de tabela (a partir de 2026-08-26):** toda tabela NOVA do hub deve usar
+prefixo **`dm_`** (dimensão — cadastros, listas, entidades relativamente estáveis) ou **`ft_`**
+(fato — eventos/transações, linhas que crescem com o tempo), alinhado ao padrão já usado pela
+RPA/SRA no mesmo banco (`dm_cr`, `ft_colaboradores_sra`, `ft_ponto_smartcontrol`). As tabelas
+já existentes (`auth_users`, `epi_*`, `desvio`, `treinamento*`) **ficam como estão** — não
+renomear; a regra vale só daqui para frente.
+
 ### Notas de desenvolvimento
 - Rodar: dev server via `.claude/launch.json` (nome `hub-inhaus-dev`, porta 3000). Nunca
   subir servidor por outros meios.
