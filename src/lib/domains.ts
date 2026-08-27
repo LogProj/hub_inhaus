@@ -117,6 +117,13 @@ export const DOMINIOS: Dominio[] = [
         icone: UsersRound,
       },
       {
+        key: "treinamentos-registro",
+        label: "Treinamentos",
+        href: "/dashboards/rh/treinamentos",
+        palavrasChave: ["treinamento", "presenca", "qr", "capacitacao", "nr", "lista de presenca"],
+        icone: ClipboardCheck,
+      },
+      {
         key: "absenteismo",
         label: "Absenteísmo",
         href: "/dashboards/rh/absenteismo",
