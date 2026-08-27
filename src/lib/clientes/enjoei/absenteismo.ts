@@ -16,7 +16,7 @@ const ESCOPO_ENJOEI: EscopoDados = { tipo: "lista", crs: ["68732"] }
  *  - vazio / "NaN" / nulo → folga / sem registro
  *
  * TODOS os cargos entram na análise — sem exclusão de categorias profissionais.
- * Este indicador NÃO tem meta de absenteísmo (diferente da Amyris/Ultragaz).
+ * Este indicador NÃO tem meta de absenteísmo definida.
  *
  * Isolamento por CR com DUAS travas: (1) filtro `where cr = $N` em toda query
  * ao banco; (2) `assertLinhasNoEscopo` conferindo defensivamente, na leitura
