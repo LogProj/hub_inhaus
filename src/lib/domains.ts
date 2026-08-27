@@ -43,6 +43,9 @@ export type Tela = {
   emBreve?: boolean
   /** Ícone exibido na sidebar antes do nome da tela. */
   icone?: LucideIcon
+  /** Subdivisão dentro do domínio na sidebar (subcabeçalho agrupando por finalidade).
+   *  Telas consecutivas com a mesma `divisao` ficam sob o mesmo subtítulo. */
+  divisao?: string
 }
 
 /**
@@ -117,11 +120,20 @@ export const DOMINIOS: Dominio[] = [
         icone: UsersRound,
       },
       {
+        key: "treinamentos-visao-geral",
+        label: "Controle de Capacitação",
+        href: "/dashboards/treinamentos",
+        palavrasChave: ["capacitacao", "horas", "treinados", "hht", "carga horaria", "per capita", "gerencial"],
+        icone: LayoutDashboard,
+        divisao: "Capacitação",
+      },
+      {
         key: "treinamentos-registro",
         label: "Treinamentos",
         href: "/dashboards/rh/treinamentos",
         palavrasChave: ["treinamento", "presenca", "qr", "capacitacao", "nr", "lista de presenca"],
         icone: ClipboardCheck,
+        divisao: "Capacitação",
       },
       {
         key: "absenteismo",
@@ -184,13 +196,6 @@ export const DOMINIOS: Dominio[] = [
     label: "Treinamentos",
     icone: GraduationCap,
     telas: [
-      {
-        key: "treinamentos-visao-geral",
-        label: "Controle de Capacitação",
-        href: "/dashboards/treinamentos",
-        palavrasChave: ["capacitacao", "horas", "treinados", "hht", "carga horaria", "per capita", "gerencial"],
-        icone: LayoutDashboard,
-      },
       {
         key: "matriz-competencias",
         label: "Matriz de competências",

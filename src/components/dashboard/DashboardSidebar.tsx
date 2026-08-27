@@ -28,6 +28,8 @@ type NavItem = {
   href: string
   label: string
   icon?: LucideIcon
+  /** Subdivisão dentro do grupo (subcabeçalho por finalidade). */
+  divisao?: string
 }
 
 type NavGroup = {
@@ -66,6 +68,7 @@ function gruposDominio(visibleScreens: string[] | null): NavGroup[] {
         href: tela.href,
         label: tela.label,
         icon: tela.icone ?? LayoutDashboard,
+        divisao: tela.divisao,
       })),
   })).filter((grupo) => grupo.items.length > 0)
 }
@@ -285,11 +288,19 @@ export function DashboardSidebar({
         {group.title}
       </p>
       <ul className="space-y-1">
-        {group.items.map((item) => {
+        {group.items.map((item, indice) => {
           const active = pathname === item.href
           const ItemIcon = item.icon ?? LayoutDashboard
+          // Subcabeçalho da divisão: aparece quando a divisão muda em relação ao item anterior.
+          const divisaoAnterior = indice > 0 ? group.items[indice - 1].divisao : undefined
+          const mostraDivisao = item.divisao && item.divisao !== divisaoAnterior
           return (
             <li key={item.href}>
+              {mostraDivisao && (
+                <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/60">
+                  {item.divisao}
+                </p>
+              )}
               <Link
                 href={item.href}
                 onClick={onNavigate}
