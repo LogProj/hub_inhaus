@@ -156,23 +156,28 @@ export async function getControleCapacitacao(filtros: FiltrosCapacitacao): Promi
 
   for (const t of treinamentos) {
     const mes = mesDe(t.data)
-    if (filtraMes && !filtros.meses.includes(mes)) continue
+    // O filtro de RESPONSÁVEL vale para tudo (inclusive a linha do tempo). O filtro
+    // de MÊS NÃO vale para a linha do tempo — ela mostra sempre a tendência completa.
     if (filtraResp && !filtros.responsaveis.includes(t.responsavelId)) continue
 
     const horas = Number(t.duracaoHoras)
+    const dentroDoMes = !filtraMes || filtros.meses.includes(mes)
     let presencasNoRecorte = 0
 
     for (const p of t.presencas) {
       if (filtraCr && !(p.crCod && filtros.crs.includes(p.crCod))) continue
       if (filtraCliente && !filtros.clientes.includes(clienteDoCr(p.crCod))) continue
 
+      // Linha do tempo (horas por mês): IGNORA o filtro de mês, respeita os demais.
+      porMes.set(mes, (porMes.get(mes) ?? 0) + horas)
+
+      // As demais métricas respeitam o filtro de mês.
+      if (!dentroDoMes) continue
+
       presencasNoRecorte++
       horasTreinadas += horas
       cpfsDistintos.add(p.cpfHash)
       if (!p.localizadoNaSra) cpfsNaoLoc.add(p.cpfHash)
-
-      // Linha do tempo (horas por mês do treinamento)
-      porMes.set(mes, (porMes.get(mes) ?? 0) + horas)
 
       // Por CR (horas + pessoas distintas)
       const crRot = p.localizadoNaSra ? p.crNome ?? "—" : "Não localizado na SRA"
@@ -195,9 +200,9 @@ export async function getControleCapacitacao(filtros: FiltrosCapacitacao): Promi
       porTreino.set(t.nome, tAcc)
     }
 
-    // Um treinamento entra na tabela/contagem se tem ao menos uma presença no recorte,
-    // OU se não há filtro por CR/cliente (aí mostramos mesmo sem presença).
-    const entra = presencasNoRecorte > 0 || (!filtraCr && !filtraCliente)
+    // Um treinamento entra na tabela/contagem se está DENTRO do mês filtrado e tem ao
+    // menos uma presença no recorte, OU (sem filtro de CR/cliente) mesmo sem presença.
+    const entra = dentroDoMes && (presencasNoRecorte > 0 || (!filtraCr && !filtraCliente))
     if (!entra) continue
 
     treinamentosNoRecorte.add(t.id)

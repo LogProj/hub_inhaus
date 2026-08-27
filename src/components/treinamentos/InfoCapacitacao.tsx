@@ -30,13 +30,15 @@ export function InfoCapacitacao() {
           como <strong>"Não localizado na SRA"</strong>, mas continua contando no total.
         </li>
         <li>
-          <strong>Linha do tempo:</strong> horas treinadas em cada <strong>mês</strong> do
-          treinamento.
+          <strong>Linha do tempo:</strong> horas treinadas em cada <strong>mês</strong>. Ela
+          mostra <strong>sempre a tendência completa</strong> — o filtro de mês <strong>não</strong>
+          {" "}se aplica a este gráfico (senão viraria um mês só).
         </li>
       </ul>
       <p>
-        <strong>Filtros:</strong> mês, cliente, CR e responsável. Sem seleção, mostra tudo.
-        Cliente e CR vêm da <strong>unidade do colaborador</strong> na data da presença.
+        <strong>Filtros:</strong> mês, cliente, CR e responsável. O painel abre já no
+        <strong> mês atual</strong>; escolha outros meses para ver o histórico. Cliente e CR
+        vêm da <strong>unidade do colaborador</strong> na data da presença.
       </p>
       <p>
         <strong>Exemplo:</strong> 3 treinamentos de 4h com 10 pessoas cada, todas diferentes,

@@ -20,6 +20,18 @@ function lista(v: string | string[] | undefined): string[] {
 
 const nf = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })
 
+/** Mês corrente "YYYY-MM" no fuso de São Paulo (padrão do filtro). */
+function mesCorrente(): string {
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date())
+  const ano = p.find((x) => x.type === "year")?.value ?? "2026"
+  const mes = p.find((x) => x.type === "month")?.value ?? "01"
+  return `${ano}-${mes}`
+}
+
 type SearchParams = { [k: string]: string | string[] | undefined }
 
 function CardKpi({
@@ -78,8 +90,11 @@ function Painel({
 export default async function ControleCapacitacaoPage({ searchParams }: { searchParams: SearchParams }) {
   await assertTelaVisivel("treinamentos-visao-geral")
 
+  // Sem filtro de mês na URL ⇒ padrão é o MÊS ATUAL (o painel abre já filtrado).
+  // Para ver outros meses/histórico, é só escolher no filtro de mês.
+  const meses = searchParams.mes === undefined ? [mesCorrente()] : lista(searchParams.mes)
   const filtros = {
-    meses: lista(searchParams.mes),
+    meses,
     clientes: lista(searchParams.cli),
     crs: lista(searchParams.cr),
     responsaveis: lista(searchParams.resp),
@@ -97,7 +112,7 @@ export default async function ControleCapacitacaoPage({ searchParams }: { search
       id="painel-capacitacao"
       className="space-y-6 [&:fullscreen]:overflow-y-auto [&:fullscreen]:bg-background [&:fullscreen]:p-8"
     >
-      <section className="reveal flex flex-wrap items-start justify-between gap-4">
+      <section className="reveal relative z-50 flex flex-wrap items-start justify-between gap-4">
         <div>
           <span className="eyebrow">
             <GraduationCap className="h-3.5 w-3.5" />
@@ -154,7 +169,7 @@ export default async function ControleCapacitacaoPage({ searchParams }: { search
               icone={ClipboardList}
               rotulo="Treinamentos realizados"
               valor={nf(dados.treinamentosRealizados)}
-              rodape={`${dados.treinamentosAbertos} em aberto · ${dados.naoLocalizados} não localizado(s)`}
+              rodape={`${dados.treinamentosAbertos} em aberto`}
               atraso={0.15}
             />
           </section>
@@ -175,13 +190,13 @@ export default async function ControleCapacitacaoPage({ searchParams }: { search
           {/* Rankings lado a lado */}
           <section className="grid gap-5 lg:grid-cols-3">
             <Painel titulo="Horas e pessoas por CR" icone={Building2} temDados={dados.porCr.length > 0} vazio="Sem dados de CR no recorte.">
-              <BarrasCapacitacao dados={dados.porCr} sufixo="horas" sufixoSecundario="pessoas" larguraRotulo={130} maxRotulo={16} />
+              <BarrasCapacitacao dados={dados.porCr} sufixo="horas" sufixoSecundario="pessoas" />
             </Painel>
             <Painel titulo="Horas por cargo" icone={Briefcase} temDados={dados.porCargo.length > 0} vazio="Sem dados de cargo no recorte.">
-              <BarrasCapacitacao dados={dados.porCargo} sufixo="horas" sufixoSecundario="presenças" larguraRotulo={130} maxRotulo={16} />
+              <BarrasCapacitacao dados={dados.porCargo} sufixo="horas" sufixoSecundario="presenças" />
             </Painel>
             <Painel titulo="Horas por treinamento" icone={BookOpen} temDados={dados.porTreinamento.length > 0} vazio="Sem treinamentos no recorte.">
-              <BarrasCapacitacao dados={dados.porTreinamento} sufixo="horas" sufixoSecundario="presenças" larguraRotulo={130} maxRotulo={16} />
+              <BarrasCapacitacao dados={dados.porTreinamento} sufixo="horas" sufixoSecundario="presenças" />
             </Painel>
           </section>
 
