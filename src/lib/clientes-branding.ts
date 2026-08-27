@@ -6,6 +6,7 @@ export type MarcaCliente = { slug: string; nome: string; logo?: string }
 
 const MARCAS: Record<string, MarcaCliente> = {
   atlas: { slug: "atlas", nome: "Atlas Copco", logo: "/logo_atlas_copco.svg" },
+  enjoei: { slug: "enjoei", nome: "Enjoei", logo: "/logo_enjoei.svg" },
 }
 
 /** Marca de um cliente pelo slug (ou uma marca genérica com o nome informado). */
