@@ -415,3 +415,53 @@ model DesvioOpcao {
   @@index([contratanteId, campo])
   @@map("desvio_opcao")
 }
+
+// ===========================================================================
+// MÓDULO DE TREINAMENTOS — registro de presença por QR.
+// Tabelas criadas por prisma/sql/011_treinamentos.sql (SQL manual, nunca db push).
+// Nomes mantidos com prefixo `treinamento_` (padrão herdado dos Desvios). A regra
+// dm_/ft_ do CLAUDE.md vale para tabelas NOVAS daqui pra frente.
+// ===========================================================================
+model Treinamento {
+  id            String                @id @default(uuid())
+  nome          String
+  data          DateTime              @db.Date
+  duracaoHoras  Decimal               @map("duracao_horas") @db.Decimal(4, 2)
+  responsavelId String                @map("responsavel_id")
+  status        String                @default("ABERTO") // ABERTO | ENCERRADO
+  tokenPublico  String                @unique @map("token_publico")
+  criadoPorId   String?               @map("criado_por_id")
+  criadoEm      DateTime              @default(now()) @map("criado_em")
+  atualizadoEm  DateTime              @default(now()) @updatedAt @map("atualizado_em")
+  responsavel   TreinamentoResponsavel @relation(fields: [responsavelId], references: [id])
+  presencas     TreinamentoPresenca[]
+
+  @@map("treinamento")
+}
+
+model TreinamentoResponsavel {
+  id           String        @id @default(uuid())
+  nome         String
+  ativo        Boolean       @default(true)
+  criadoEm     DateTime      @default(now()) @map("criado_em")
+  treinamentos Treinamento[]
+
+  @@map("treinamento_responsavel")
+}
+
+model TreinamentoPresenca {
+  id              String      @id @default(uuid())
+  treinamentoId   String      @map("treinamento_id")
+  cpfHash         String      @map("cpf_hash")
+  nomeColab       String?     @map("nome_colab")
+  crCod           String?     @map("cr_cod")
+  crNome          String?     @map("cr_nome")
+  cargo           String?
+  matricula       String?
+  localizadoNaSra Boolean     @map("localizado_na_sra")
+  confirmadoEm    DateTime    @default(now()) @map("confirmado_em")
+  treinamento     Treinamento @relation(fields: [treinamentoId], references: [id], onDelete: Cascade)
+
+  @@unique([treinamentoId, cpfHash])
+  @@map("treinamento_presenca")
+}
