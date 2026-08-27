@@ -24,17 +24,19 @@ export function FiltrosCapacitacao({ opcoes, atual }: { opcoes: OpcoesCapacitaca
   const navegar = (over: Partial<Atual>) => {
     const f = { ...atual, ...over }
     const params = new URLSearchParams()
-    for (const m of f.meses) params.append("mes", m)
+    // Mês vazio = "todos" EXPLÍCITO (senão a página reaplicaria o mês atual padrão).
+    if (f.meses.length === 0) params.append("mes", "todos")
+    else for (const m of f.meses) params.append("mes", m)
     for (const c of f.clientes) params.append("cli", c)
     for (const c of f.crs) params.append("cr", c)
     for (const r of f.responsaveis) params.append("resp", r)
-    const qs = params.toString()
-    router.push(qs ? `${pathname}?${qs}` : pathname)
+    router.push(`${pathname}?${params.toString()}`)
   }
 
   /** Selecionar TODAS as opções = nenhum filtro (todos). */
   const normalizar = (v: string[], total: number) => (v.length >= total ? [] : v)
-  const limpar = () => router.push(pathname)
+  /** Limpar = remove TODOS os filtros, inclusive o mês (mostra todos os meses). */
+  const limpar = () => router.push(`${pathname}?mes=todos`)
 
   const opcoesMes: ComboOption[] = opcoes.meses.map((m) => ({ value: m.valor, label: m.rotulo }))
   const opcoesCliente: ComboOption[] = opcoes.clientes.map((c) => ({ value: c, label: tituloNome(c) }))

@@ -11,8 +11,14 @@ export function TreinamentoPublicoForm({ token }: { token: string }) {
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState<{ nome: string; localizado: boolean; jaEstava: boolean } | null>(null)
 
+  const cpfCompleto = cpf.length === 11
+
   async function enviar(e: React.FormEvent) {
     e.preventDefault()
+    if (!cpfCompleto) {
+      setErro("Digite os 11 números do CPF (sem ponto e sem traço).")
+      return
+    }
     setErro(null)
     setCarregando(true)
     try {
@@ -56,14 +62,21 @@ export function TreinamentoPublicoForm({ token }: { token: string }) {
         <Input
           id="cpf"
           inputMode="numeric"
-          placeholder="Somente números"
+          pattern="\d*"
+          maxLength={11}
+          placeholder="Somente os 11 números"
           value={cpf}
-          onChange={(e) => setCpf(e.target.value)}
+          // Aceita SÓ dígitos e no máximo 11 (remove ponto, traço, espaço e cola).
+          onChange={(e) => setCpf(e.target.value.replace(/\D/g, "").slice(0, 11))}
           autoComplete="off"
+          aria-describedby="cpf-ajuda"
         />
+        <p id="cpf-ajuda" className="text-xs text-navy/50">
+          {cpf.length}/11 dígitos — sem ponto e sem traço.
+        </p>
       </div>
       {erro && <p className="text-sm text-red-600">{erro}</p>}
-      <Button type="submit" disabled={carregando} className="w-full">
+      <Button type="submit" disabled={carregando || !cpfCompleto} className="w-full">
         {carregando ? "Confirmando..." : "Confirmar presença"}
       </Button>
     </form>

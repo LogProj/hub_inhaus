@@ -90,9 +90,13 @@ function Painel({
 export default async function ControleCapacitacaoPage({ searchParams }: { searchParams: SearchParams }) {
   await assertTelaVisivel("treinamentos-visao-geral")
 
-  // Sem filtro de mês na URL ⇒ padrão é o MÊS ATUAL (o painel abre já filtrado).
-  // Para ver outros meses/histórico, é só escolher no filtro de mês.
-  const meses = searchParams.mes === undefined ? [mesCorrente()] : lista(searchParams.mes)
+  // Regra do filtro de mês:
+  //  - SEM parâmetro na URL (primeira entrada) ⇒ padrão MÊS ATUAL.
+  //  - `mes=todos` (sentinela ao limpar/desmarcar) ⇒ TODOS os meses (sem filtro).
+  //  - meses explícitos ⇒ exatamente eles.
+  const mesParam = searchParams.mes
+  const meses =
+    mesParam === undefined ? [mesCorrente()] : lista(mesParam).filter((m) => m !== "todos")
   const filtros = {
     meses,
     clientes: lista(searchParams.cli),
@@ -112,7 +116,7 @@ export default async function ControleCapacitacaoPage({ searchParams }: { search
       id="painel-capacitacao"
       className="space-y-6 [&:fullscreen]:overflow-y-auto [&:fullscreen]:bg-background [&:fullscreen]:p-8"
     >
-      <section className="reveal relative z-50 flex flex-wrap items-start justify-between gap-4">
+      <section className="reveal relative z-20 flex flex-wrap items-start justify-between gap-4">
         <div>
           <span className="eyebrow">
             <GraduationCap className="h-3.5 w-3.5" />
