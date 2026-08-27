@@ -51,7 +51,7 @@ export function TabelaPresenca({ presencas }: { presencas: Presenca[] }) {
                 {/* CPF só aparece para quem não foi localizado na SRA (identificação). */}
                 {!p.localizadoNaSra && p.cpfTexto ? formatarCpf(p.cpfTexto) : "—"}
               </td>
-              <td className="py-2 pr-4">{p.crNome ? tituloNome(p.crNome) : "—"}</td>
+              <td className="py-2 pr-4">{p.crNome ? p.crNome.toUpperCase() : "—"}</td>
               <td className="py-2 pr-4">{p.cargo ? tituloNome(p.cargo) : "—"}</td>
               <td className="py-2 pr-4">{p.matricula ?? "—"}</td>
               <td className="py-2 pr-4">

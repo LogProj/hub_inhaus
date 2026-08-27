@@ -40,7 +40,7 @@ export function FiltrosCapacitacao({ opcoes, atual }: { opcoes: OpcoesCapacitaca
 
   const opcoesMes: ComboOption[] = opcoes.meses.map((m) => ({ value: m.valor, label: m.rotulo }))
   const opcoesCliente: ComboOption[] = opcoes.clientes.map((c) => ({ value: c, label: tituloNome(c) }))
-  const opcoesCr: ComboOption[] = opcoes.crs.map((c) => ({ value: c.valor, label: tituloNome(c.rotulo) }))
+  const opcoesCr: ComboOption[] = opcoes.crs.map((c) => ({ value: c.valor, label: c.rotulo.toUpperCase() }))
   const opcoesResp: ComboOption[] = opcoes.responsaveis.map((r) => ({ value: r.valor, label: r.rotulo }))
 
   const [aberto, setAberto] = useState(false)
