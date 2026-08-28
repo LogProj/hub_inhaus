@@ -152,6 +152,11 @@ export function DashboardSidebar({
         }
       : grupoEpiBase
   const grupoGeral: NavGroup = GRUPO_GERAL
+  // "Visão Geral" agora é permissão concedida como as demais telas: só aparece para
+  // admin ou para quem tem a chave da Home. Sem ela (ex.: usuário só com telas de
+  // cliente), a Visão Geral some da sidebar.
+  const mostraGeral =
+    isAdmin || visibleScreens === null || visibleScreens.includes(TELA_HOME.key)
   // Estrutura do raiz: Visão Geral (grupoGeral) + pasta In-Haus + pasta(s) Clientes +
   // Administração. Tudo que é INTERNO (domínios + EPI) vai para dentro do In-Haus.
   const gruposInternos: NavGroup[] = [
@@ -343,7 +348,7 @@ export function DashboardSidebar({
       <nav className="flex flex-1 flex-col gap-6 overflow-y-auto">
         {vista.nivel === "raiz" && (
           <>
-            {renderGrupo(grupoGeral)}
+            {mostraGeral && renderGrupo(grupoGeral)}
 
             {/* Pasta In-Haus — agrupa TODAS as áreas internas (domínios + EPI). */}
             {gruposInternos.length > 0 && (

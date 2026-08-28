@@ -25,9 +25,12 @@ export default async function DashboardsHome() {
   const papeis = await resolverPapeisDashboard()
   if (papeis.soPreenche) redirect("/dashboards/checklists")
 
-  // Cliente: a Home genérica do hub não é para ele. Vai direto para a 1ª tela
-  // concedida; sem telas liberadas, mostra um aviso enxuto (nada do hub interno).
-  if (papeis.classificacao === "CLIENTE") {
+  // "Visão Geral" é permissão concedida como as demais: quem não a tem (admin sempre
+  // tem) não vê a Home do hub — vai direto para a 1ª tela liberada. Cobre tanto o
+  // CLIENTE quanto o INTERNO que só recebeu telas de cliente. Sem nenhuma tela, mostra
+  // um aviso enxuto.
+  const temHome = papeis.isAdmin || papeis.visibleScreens.includes("home")
+  if (!temHome) {
     const visiveis = telasVisiveis({
       isAdmin: papeis.isAdmin,
       visibleScreens: papeis.visibleScreens,

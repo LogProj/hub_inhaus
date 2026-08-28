@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-import { DOMINIOS } from "@/lib/domains"
+import { DOMINIOS, TELA_HOME } from "@/lib/domains"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -23,6 +23,14 @@ type GrupoTela = {
  */
 function montarGrupos(): GrupoTela[] {
   const grupos: GrupoTela[] = []
+
+  // "Visão Geral" (Home) é uma tela concedível como as demais: sem esta permissão
+  // (nem admin), o usuário não vê a Visão Geral e cai direto na 1ª tela liberada.
+  grupos.push({
+    titulo: "Geral",
+    ehCliente: false,
+    telas: [{ key: TELA_HOME.key, label: TELA_HOME.label }],
+  })
 
   for (const dominio of DOMINIOS) {
     if (dominio.clientes?.length) continue
