@@ -127,6 +127,7 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
   const [dados, setDados] = React.useState<IndicadoresDesvios | null>(null)
   const [meses, setMeses] = React.useState<string[]>([])
   const [mes, setMes] = React.useState<string | null>(null)
+  const [status, setStatus] = React.useState<string | null>(null)
   const [carregando, setCarregando] = React.useState(true)
   const [tela, setTela] = React.useState(false)
 
@@ -135,7 +136,10 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
   React.useEffect(() => {
     let cancelado = false
     setCarregando(true)
-    const params = mes ? `?mes=${encodeURIComponent(mes)}` : ""
+    const busca = new URLSearchParams()
+    if (mes) busca.set("mes", mes)
+    if (status) busca.set("status", status)
+    const params = busca.toString() ? `?${busca.toString()}` : ""
     fetch(`/api/desvios/indicadores${params}`)
       .then((r) => r.json())
       .then((json: { indicadores: IndicadoresDesvios; meses: string[]; mes: string | null }) => {
@@ -151,7 +155,7 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
       cancelado = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mes])
+  }, [mes, status])
 
   React.useEffect(() => {
     function aoMudar() {
@@ -198,6 +202,16 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
           {info}
         </div>
         <div className="flex items-center gap-2">
+          <Combobox
+            value={status}
+            onChange={(v) => setStatus(v)}
+            options={STATUS_DESVIO.map((s) => ({ value: s.value, label: s.label }))}
+            placeholder="Todos os status"
+            allowClear
+            clearLabel="Todos os status"
+            ariaLabel="Filtrar por status"
+            className="w-44"
+          />
           <Combobox
             value={mes}
             onChange={(v) => setMes(v)}
@@ -336,7 +350,7 @@ export function PainelDesvios({ info }: { info: React.ReactNode }) {
           </div>
 
           {/* Tabela paginada dos desvios do período, com "Ver" para o detalhe. */}
-          <TabelaResumoDesvios mes={mes} />
+          <TabelaResumoDesvios mes={mes} status={status} />
         </>
       )}
     </div>

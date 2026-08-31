@@ -9,8 +9,10 @@ export const dynamic = "force-dynamic"
 export async function GET(request: Request) {
   const { escopo } = await escopoContratanteAtual()
   const meses = await mesesDisponiveis(escopo)
-  const pedido = new URL(request.url).searchParams.get("mes")
+  const url = new URL(request.url)
+  const pedido = url.searchParams.get("mes")
   const mes = pedido && meses.includes(pedido) ? pedido : (meses[0] ?? null)
-  const indicadores = await indicadoresDesvios(escopo, mes)
+  const status = url.searchParams.get("status") || null
+  const indicadores = await indicadoresDesvios(escopo, mes, status)
   return NextResponse.json({ indicadores, meses, mes })
 }

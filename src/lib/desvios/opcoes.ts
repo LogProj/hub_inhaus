@@ -1,5 +1,6 @@
 /** Listas de valores dos campos de um desvio (fonte: planilha Controle de Aderência). */
-export const RESPONSAVEIS_INTERNOS = ["ACTA", "ACTA / GPS", "CP", "CP / GPS", "GPS"] as const
+// Responsável interno NÃO é mais um campo do sistema: no hub o responsável é
+// sempre GPS (In-Haus). Por isso não há lista de opções nem filtro para ele.
 export const TIPOS = ["Pedido de Venda", "ACS - Kit Conjunto", "CS - Kit Conjunto", "Pedido TMC"] as const
 export const DIVISOES = ["BR31", "BR41"] as const
 export const MOTIVOS = [

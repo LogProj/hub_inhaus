@@ -45,21 +45,28 @@ function moeda(v: string | null): string {
  * Tabela paginada (somente leitura) dos desvios, para o painel. Segue o mês
  * selecionado no painel. Botão "Ver" abre o detalhe completo num diálogo.
  */
-export function TabelaResumoDesvios({ mes }: { mes: string | null }) {
+export function TabelaResumoDesvios({
+  mes,
+  status = null,
+}: {
+  mes: string | null
+  status?: string | null
+}) {
   const [itens, setItens] = React.useState<Desvio[]>([])
   const [total, setTotal] = React.useState(0)
   const [pagina, setPagina] = React.useState(1)
   const [selecionado, setSelecionado] = React.useState<Desvio | null>(null)
 
-  // Volta à primeira página quando o mês muda.
+  // Volta à primeira página quando o mês ou o status muda.
   React.useEffect(() => {
     setPagina(1)
-  }, [mes])
+  }, [mes, status])
 
   React.useEffect(() => {
     let cancelado = false
     const p = new URLSearchParams({ pagina: String(pagina), porPagina: String(POR_PAGINA) })
     p.set("mes", mes ?? "todos")
+    if (status) p.set("status", status)
     fetch(`/api/desvios?${p.toString()}`)
       .then((r) => r.json())
       .then((d: { itens: Desvio[]; total: number }) => {
@@ -70,7 +77,7 @@ export function TabelaResumoDesvios({ mes }: { mes: string | null }) {
     return () => {
       cancelado = true
     }
-  }, [pagina, mes])
+  }, [pagina, mes, status])
 
   const totalPaginas = Math.max(1, Math.ceil(total / POR_PAGINA))
 
@@ -156,7 +163,6 @@ export function TabelaResumoDesvios({ mes }: { mes: string | null }) {
                 <StatusBadge status={selecionado.status} />
               </Campo>
               <Campo r="Data da ocorrência" v={data(selecionado.dataOcorrencia)} />
-              <Campo r="Responsável Interno" v={selecionado.responsavelInterno} />
               <Campo r="Nº OTB/WBS" v={selecionado.numeroOtbWbs} />
               <Campo r="Tipo" v={selecionado.tipo} />
               <Campo r="Divisão" v={selecionado.divisao} />

@@ -5,11 +5,11 @@
  * Módulo server-only.
  */
 import { prisma } from "@/lib/prisma"
-import { TIPOS, MOTIVOS, CAUSAS_RAIZ, RESPONSAVEIS_INTERNOS, DIVISOES } from "./opcoes"
+import { TIPOS, MOTIVOS, CAUSAS_RAIZ, DIVISOES } from "./opcoes"
 
-/** Campos cujas listas são configuráveis, com rótulo e valores padrão (imutáveis). */
+/** Campos cujas listas são configuráveis, com rótulo e valores padrão (imutáveis).
+ *  Responsável interno saiu: no hub é sempre GPS, não é campo configurável. */
 export const CAMPOS_LISTA = {
-  responsavelInterno: { label: "Responsável Interno", padrao: RESPONSAVEIS_INTERNOS as readonly string[] },
   tipo: { label: "Tipo", padrao: TIPOS as readonly string[] },
   divisao: { label: "Divisão", padrao: DIVISOES as readonly string[] },
   motivo: { label: "Motivo", padrao: MOTIVOS as readonly string[] },

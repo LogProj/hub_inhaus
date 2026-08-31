@@ -8,7 +8,7 @@ const dataOpcional = z
   .transform((v) => (v ? v : null))
 
 export const criarDesvioSchema = z.object({
-  responsavelInterno: z.string().trim().optional().nullable(),
+  // Responsável interno não é enviado pelo formulário: o hub grava sempre "GPS".
   numeroOtbWbs: z.string().trim().optional().nullable(),
   tipo: z.string().trim().optional().nullable(),
   divisao: z.string().trim().optional().nullable(),

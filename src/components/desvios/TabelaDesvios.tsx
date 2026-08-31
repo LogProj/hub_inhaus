@@ -283,10 +283,6 @@ export function TabelaDesvios({ isAdmin = false }: { isAdmin?: boolean }) {
                     <td colSpan={6} className="px-4 py-4">
                       <dl className="grid gap-3 text-sm sm:grid-cols-2">
                         <div>
-                          <dt className="text-xs uppercase text-muted-foreground">Responsável interno</dt>
-                          <dd className="text-foreground">{item.responsavelInterno ?? "—"}</dd>
-                        </div>
-                        <div>
                           <dt className="text-xs uppercase text-muted-foreground">Tipo</dt>
                           <dd className="text-foreground">{item.tipo ?? "—"}</dd>
                         </div>

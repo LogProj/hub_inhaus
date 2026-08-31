@@ -112,7 +112,8 @@ export async function criarDesvio(
   return prisma.desvio.create({
     data: {
       contratanteId,
-      responsavelInterno: input.responsavelInterno ?? null,
+      // No hub o responsável interno é sempre GPS (In-Haus) — não vem do formulário.
+      responsavelInterno: "GPS",
       numeroOtbWbs: input.numeroOtbWbs ?? null,
       tipo: input.tipo ?? null,
       divisao: input.divisao ?? null,
@@ -223,13 +224,17 @@ function contagensDe(
 export async function indicadoresDesvios(
   escopo: EscopoContratante,
   mes?: string | null,
+  status?: string | null,
 ): Promise<IndicadoresDesvios> {
   const whereBase = whereEscopo(escopo)
   if (whereBase === null) return VAZIO
+  // O filtro de status vale para TODOS os números do painel, inclusive a evolução
+  // por mês (diferente do mês, que a evolução ignora para manter a tendência).
+  const comStatus = status ? { ...whereBase, status } : whereBase
   const rangeMes = rangeDoMes(mes)
   const where = rangeMes
-    ? { ...whereBase, dataOcorrencia: { gte: rangeMes.gte, lt: rangeMes.lt } }
-    : whereBase
+    ? { ...comStatus, dataOcorrencia: { gte: rangeMes.gte, lt: rangeMes.lt } }
+    : comStatus
 
   const [total, porStatusRaw, somaTotal, somaPendente, motivos, causas, clientes, tipos, meses] =
     await Promise.all([
@@ -249,6 +254,7 @@ export async function indicadoresDesvios(
         from desvio
         where data_ocorrencia is not null
           ${escopo.tipo === "lista" ? Prisma.sql`and contratante_id = any(${escopo.ids}::int[])` : Prisma.empty}
+          ${status ? Prisma.sql`and status = ${status}` : Prisma.empty}
         group by 1
         order by 1
       `,

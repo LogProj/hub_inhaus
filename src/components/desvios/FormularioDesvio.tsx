@@ -19,7 +19,6 @@ const OPCOES_STATUS: ComboOption[] = STATUS_DESVIO.map((s) => ({ value: s.value,
 type OpcoesCampos = Record<string, string[]>
 
 type FormState = {
-  responsavelInterno: string | null
   numeroOtbWbs: string
   tipo: string | null
   divisao: string | null
@@ -35,7 +34,6 @@ type FormState = {
 }
 
 const ESTADO_INICIAL: FormState = {
-  responsavelInterno: null,
   numeroOtbWbs: "",
   tipo: null,
   divisao: null,
@@ -82,7 +80,6 @@ export function FormularioDesvio({ isAdmin = false }: { isAdmin?: boolean }) {
     setEnviando(true)
     try {
       const payload = {
-        responsavelInterno: form.responsavelInterno,
         numeroOtbWbs: form.numeroOtbWbs.trim() || null,
         tipo: form.tipo,
         divisao: form.divisao,
@@ -127,18 +124,6 @@ export function FormularioDesvio({ isAdmin = false }: { isAdmin?: boolean }) {
       )}
 
       <div className="grid gap-5 md:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="responsavelInterno">Responsável interno</Label>
-          <Combobox
-            value={form.responsavelInterno}
-            onChange={(v) => atualizar("responsavelInterno", v)}
-            options={paraOpcoes(opcoes.responsavelInterno ?? [])}
-            placeholder="Selecionar responsável"
-            allowClear
-            ariaLabel="Responsável interno"
-          />
-        </div>
-
         <div className="space-y-1.5">
           <Label htmlFor="numeroOtbWbs">Número OTB/WBS</Label>
           <Input
