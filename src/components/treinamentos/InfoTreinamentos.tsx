@@ -15,7 +15,9 @@ export function InfoTreinamentos() {
         <li>
           Quem participou <strong>escaneia o QR</strong>, informa o <strong>CPF</strong> e
           confirma. O sistema identifica o colaborador pelo CPF e registra a presença —
-          nome, cargo e unidade aparecem automaticamente.
+          nome, cargo e unidade aparecem automaticamente. A identificação considera
+          <strong> todo o histórico da empresa</strong>, de todas as regionais: reconhece
+          inclusive quem já foi desligado (usando os dados mais recentes da pessoa).
         </li>
         <li>
           <strong>Uma presença por pessoa.</strong> Confirmar o mesmo CPF duas vezes não
