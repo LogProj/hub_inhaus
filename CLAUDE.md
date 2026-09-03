@@ -115,6 +115,14 @@ tarefa. O info nunca pode ficar defasado em relação ao cálculo real.
 ### Autenticação e acesso
 - Camada portada do `hub_amyris`: `src/lib/{global-auth,auth-session,db-inhaus,prisma}.ts`,
   `middleware.ts`, `prisma/schema.prisma` (modelo `AuthUser`). Cookies com prefixo `inhaus`.
+- **Caminho da requisição para os Server Components:** o middleware publica o path num
+  header cujo nome é a constante única `HEADER_PATHNAME` (`src/lib/http-headers.ts`),
+  consumida pelo `layout.tsx` (trava do CLIENTE) e por `dashboard-acesso.ts` (destino do
+  refresh). **Sempre use a constante nos dois lados** — nunca a string literal. Produtor e
+  consumidor com nomes diferentes = valor sempre nulo → o refresh de sessão jogava o
+  usuário na Visão Geral em vez da página pedida (bug real, corrigido; teste em
+  `dashboard-acesso.test.ts`). Ao renovar a sessão, o destino é montado por `destinoRefresh`,
+  que **preserva a rota pedida** (e barra open-redirect).
 - **Acesso livre de desenvolvimento** (`src/lib/dev-auth.ts`): com `HUB_ACESSO_LIVRE=1` no
   `.env.local` **e** fora de produção, entra sem `global_auth` como "Visitante" (admin).
   Trava dupla; nunca vale em produção. É como revisar o hub sem credenciais.

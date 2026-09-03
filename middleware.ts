@@ -7,6 +7,7 @@
 // só neste middleware para proteger uma rota.
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { HEADER_PATHNAME } from "@/lib/http-headers"
 
 const COOKIE_PREFIX = "inhaus"
 const ACCESS_COOKIE = `${COOKIE_PREFIX}_access_token`
@@ -39,7 +40,7 @@ export function middleware(request: NextRequest) {
 
   // Expõe o caminho atual aos server components (layout usa para a trava por tela).
   const headersComPath = new Headers(request.headers)
-  headersComPath.set("x-pathname", pathname)
+  headersComPath.set(HEADER_PATHNAME, pathname)
   const seguir = () => NextResponse.next({ request: { headers: headersComPath } })
 
   if (acessoLivreLiberado()) return seguir()

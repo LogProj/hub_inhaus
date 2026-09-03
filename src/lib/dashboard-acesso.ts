@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { getSessionReadOnly } from "@/lib/auth-session"
 import { acessoLivreLiberado, USUARIO_DEV } from "@/lib/dev-auth"
 import { CHAVES_DE_TELA } from "@/lib/domains"
+import { HEADER_PATHNAME } from "@/lib/http-headers"
 import { resolverAcessoEpi, podeConfigurar } from "@/lib/epi/papeis"
 import { escopoDoUsuario, podeVerValidacoes } from "@/lib/epi/escopo"
 
@@ -30,6 +31,17 @@ export type PapeisDashboard = {
   classificacao: string
 }
 
+/**
+ * Monta o destino do refresh de sessão PRESERVANDO a página que o usuário pediu.
+ * `pathname` vem do header publicado pelo middleware (HEADER_PATHNAME); quando ausente,
+ * cai no fallback. Regressão que isto blinda: o refresh jogava todo mundo para a Visão
+ * Geral porque o caminho pedido se perdia. Puro de propósito — é o que os testes cobrem.
+ */
+export function destinoRefresh(pathname: string | null, fallback = "/dashboards"): string {
+  const path = pathname && pathname.startsWith("/") ? pathname : fallback
+  return `/api/auth/refresh?next=${encodeURIComponent(path)}`
+}
+
 export async function resolverPapeisDashboard(next = "/dashboards"): Promise<PapeisDashboard> {
   // Acesso livre (dev): admin fictício enxerga tudo — nunca é "só preenche".
   if (acessoLivreLiberado()) {
@@ -48,8 +60,9 @@ export async function resolverPapeisDashboard(next = "/dashboards"): Promise<Pap
   const resultado = await getSessionReadOnly()
   if (resultado.status === "anonimo") redirect("/login")
   if (resultado.status === "renovar") {
-    const path = headers().get("x-invoke-path") ?? next
-    redirect(`/api/auth/refresh?next=${encodeURIComponent(path)}`)
+    // Preserva a página que o usuário pediu (o middleware publica em HEADER_PATHNAME);
+    // sem isso, o refresh de sessão jogava todo mundo de volta para a Visão Geral.
+    redirect(destinoRefresh(headers().get(HEADER_PATHNAME), next))
   }
 
   const { sessao } = resultado

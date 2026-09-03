@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard/DashboardShell"
 import { resolverPapeisDashboard } from "@/lib/dashboard-acesso"
 import { telasVisiveis } from "@/lib/domains"
+import { HEADER_PATHNAME } from "@/lib/http-headers"
 
 export default async function DashboardsLayout({ children }: { children: React.ReactNode }) {
   const papeis = await resolverPapeisDashboard()
@@ -12,7 +13,7 @@ export default async function DashboardsLayout({ children }: { children: React.R
   // acessar caminhos das telas concedidas a ele — nem por URL vê outra área/cliente.
   // (Internos seguem pelas guardas de página; admin passa sempre.)
   if (papeis.classificacao === "CLIENTE" && !papeis.isAdmin) {
-    const path = headers().get("x-pathname") ?? ""
+    const path = headers().get(HEADER_PATHNAME) ?? ""
     const visiveis = telasVisiveis({
       isAdmin: papeis.isAdmin,
       visibleScreens: papeis.visibleScreens,
