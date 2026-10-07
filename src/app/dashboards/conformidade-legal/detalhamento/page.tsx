@@ -19,7 +19,7 @@ export default async function DetalhamentoPage({ searchParams }: { searchParams:
       <div className="mt-3 flex items-center gap-3">
         <h1 className="font-display text-3xl font-semibold text-foreground">Detalhamento</h1>
         <InfoIndicador titulo="Detalhamento de conformidade legal">
-          <p>Os agrupamentos e os registros respeitam os filtros recebidos do dashboard e os CRs autorizados.</p>
+          <p>Os agrupamentos e os registros respeitam os filtros recebidos do dashboard. Quem tem acesso ao indicador pode consultar todos os CRs.</p>
           <ul className="list-disc space-y-2 pl-5">
             <li><b>Registros:</b> uma linha por pessoa, período e hierarquia. A mesma pessoa pode aparecer em várias linhas.</li>
             <li><b>Ocorrências:</b> soma das ocorrências do recorte. Quando há um tipo selecionado, entra apenas esse tipo.</li>
@@ -33,4 +33,3 @@ export default async function DetalhamentoPage({ searchParams }: { searchParams:
     {dados ? <DetalhamentoConformidadeLegal dados={dados} filtros={lerFiltrosConformidade(searchParams)} /> : <div role="alert" className="rounded-3xl border border-destructive/20 bg-destructive/5 p-6 text-destructive">Não foi possível carregar o detalhamento. Atualize a página para tentar novamente.</div>}
   </div>
 }
-

@@ -110,3 +110,9 @@ Férias com ponto = SUM('Conformidade legal'[ferias_com_ponto])
 As medidas estão documentadas para implementação no Power BI; não foram executadas em um arquivo PBIX. O drill contém somente o recorte exportado (ativos e uma regional); não permite calcular taxa de conformidade ou percentual sobre o quadro total sem uma fonte correspondente de todos os colaboradores. Processos e ticket aguardam confirmação da regra de competência e agregação.
 
 Página inicial proposta: total de ocorrências, colaboradores com ocorrência, evolução mensal, distribuição por tipo e matriz regional → gerente → CR → supervisor → função → colaborador. Totais da matriz são calculados pelas medidas, não por linhas de total importadas.
+
+
+## Regra de acesso do indicador (07/10/2026)
+
+Conformidade legal possui acesso integral por tela: quem tem a permissão conformidade-legal pode consultar todos os CRs, sem vínculo obrigatório com CR ou cliente. A regra vale para o dashboard e o detalhamento. Filtros são opcionais e não definem autorização. Sessões ausentes ou vencidas não recebem dados. Esta exceção é exclusiva deste indicador; o isolamento dos demais módulos permanece em vigor.
+

@@ -38,7 +38,7 @@ export default async function ConformidadeLegalPage({ searchParams }: { searchPa
                 <li><b>Tipos:</b> interjornada, limite de horas diárias, exceções de horas diárias, folga semanal, limite de folgas trabalhadas na escala 12×36 e férias com ponto.</li>
                 <li><b>Participação:</b> ocorrências do tipo divididas pelo total do recorte. Exemplo: 20 de 100 ocorrências representam 20%.</li>
                 <li><b>Pessoas e CRs:</b> contados uma única vez no recorte, considerando quem tem ocorrências. Pessoas sem identificação disponível ficam fora da contagem distinta. Uma pessoa pode aparecer em vários meses e tipos.</li>
-                <li><b>Filtros:</b> inicialmente entram todos os períodos disponíveis e os CRs autorizados. A seleção de um tipo direciona os gráficos e o detalhamento; os cards continuam mostrando o recorte dos filtros.</li>
+                <li><b>Filtros:</b> inicialmente entram todos os períodos e CRs disponíveis para quem tem acesso ao indicador. A seleção de um tipo direciona os gráficos e o detalhamento; os cards continuam mostrando o recorte dos filtros.</li>
                 <li><b>Detalhamento:</b> abre uma tela com os mesmos filtros. Escolha o agrupamento e expanda as linhas para consultar os níveis seguintes até os registros. O total de pessoas conta cada pessoa uma única vez, mesmo que apareça em vários grupos.</li>
                 <li>Os períodos podem estar incompletos. Um volume menor não indica, por si só, melhora da conformidade.</li>
               </ul>
@@ -61,4 +61,3 @@ export default async function ConformidadeLegalPage({ searchParams }: { searchPa
     </div>
   )
 }
-
