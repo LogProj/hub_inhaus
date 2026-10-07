@@ -70,6 +70,20 @@ export type Dominio = {
 }
 
 export const DOMINIOS: Dominio[] = [
+{
+    key: "conformidade-legal",
+    label: "Horas Extras",
+    icone: ShieldCheck,
+    telas: [
+      {
+        key: "conformidade-legal",
+        label: "Conformidade legal",
+        href: "/dashboards/conformidade-legal",
+        palavrasChave: ["jornada", "interjornada", "ocorrencias", "folga", "ferias", "legal"],
+        icone: BarChart3,
+      },
+    ],
+  },
   {
     key: "seguranca",
     label: "Segurança",
@@ -341,6 +355,10 @@ export const DOMINIOS: Dominio[] = [
   },
 ]
 
+/** Oculta módulos da navegação sem alterar as chaves de permissão existentes. */
+export const DOMINIOS_OCULTOS = new Set(["rh", "treinamentos", "financeiro", "epi"])
+export const DOMINIOS_NAVEGACAO = DOMINIOS.filter((dominio) => !DOMINIOS_OCULTOS.has(dominio.key))
+
 export type TelaComDominio = Tela & {
   dominioKey: string
   dominioLabel: string
@@ -430,7 +448,7 @@ function normalizar(texto: string): string {
 export function buscarTelas(termo: string): TelaComDominio[] {
   const alvo = normalizar(termo)
   if (!alvo) return []
-  return TODAS_AS_TELAS.filter((tela) => {
+  return TODAS_AS_TELAS.filter((tela) => !DOMINIOS_OCULTOS.has(tela.dominioKey) && tela.key !== "home").filter((tela) => {
     const campos = [tela.label, tela.dominioLabel, ...(tela.palavrasChave ?? [])]
     return campos.some((campo) => normalizar(campo).includes(alvo))
   })

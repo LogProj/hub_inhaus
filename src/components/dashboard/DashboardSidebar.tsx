@@ -21,7 +21,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { InhausLogo } from "@/components/brand/InhausLogo"
-import { DOMINIOS, TELA_HOME, clientesVisiveis, TODAS_AS_TELAS } from "@/lib/domains"
+import { DOMINIOS_NAVEGACAO as DOMINIOS, DOMINIOS_OCULTOS, TELA_HOME, clientesVisiveis, TODAS_AS_TELAS } from "@/lib/domains"
 import { marcaDoCliente } from "@/lib/clientes-branding"
 
 type NavItem = {
@@ -140,7 +140,7 @@ export function DashboardSidebar({
   )
   // "Checklists" (porta de preenchimento do líder) mora DENTRO do In-Haus, junto do
   // EPI — não na Visão Geral. Fica no topo do grupo EPI.
-  const grupoEpiBase = grupoEpi(epiConfig, epiValida)
+  const grupoEpiBase = DOMINIOS_OCULTOS.has("epi") ? null : grupoEpi(epiConfig, epiValida)
   const grupoEpiAtual: NavGroup | null =
     grupoEpiBase && epiValida
       ? {
@@ -156,7 +156,7 @@ export function DashboardSidebar({
   // admin ou para quem tem a chave da Home. Sem ela (ex.: usuário só com telas de
   // cliente), a Visão Geral some da sidebar.
   const mostraGeral =
-    isAdmin || visibleScreens === null || visibleScreens.includes(TELA_HOME.key)
+    false
   // Estrutura do raiz: Visão Geral (grupoGeral) + pasta In-Haus + pasta(s) Clientes +
   // Administração. Tudo que é INTERNO (domínios + EPI) vai para dentro do In-Haus.
   const gruposInternos: NavGroup[] = [

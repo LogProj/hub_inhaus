@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import { ArrowUpRight, Sparkles } from "lucide-react"
 
 import { TiltCard } from "@/components/TiltCard"
-import { DOMINIOS, telasVisiveis } from "@/lib/domains"
+import { DOMINIOS_NAVEGACAO as DOMINIOS, telasVisiveis } from "@/lib/domains"
 import { resolverPapeisDashboard } from "@/lib/dashboard-acesso"
 
 export const metadata: Metadata = { title: "Visão geral" }
