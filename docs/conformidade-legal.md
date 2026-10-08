@@ -121,3 +121,8 @@ Conformidade legal possui acesso integral por tela: quem tem a permissão confor
 
 Administradores podem usar Importar Excel na página de Conformidade legal. O arquivo .xlsx (até 4 MB) deve manter os 17 campos, a hierarquia completa, o total geral e os filtros da extração do modelo original. A validação exclui totais/subtotais, confere a soma das ocorrências e bloqueia arquivos inconsistentes. A carga é gravada em transação, mantendo o histórico; reenvios idênticos não duplicam registros. O CPF é convertido em HMAC no servidor e não é gravado em texto. A página atualiza após o sucesso. O endpoint exige administrador, mesma origem e EPI_CPF_SECRET configurado.
 
+
+## Reimportação por conteúdo (08/10/2026)
+
+A comparação considera os registros de cada competência, incluindo hierarquia, colaborador identificado por HMAC, CR e métricas. Nome do arquivo, filtros de origem e ordem das linhas não determinam duplicidade. Períodos idênticos à versão atual são ignorados. Apenas períodos novos ou alterados são gravados. A view exibe uma única carga COMPLETA por competência, sem acumular escopos; a nova carga substitui o snapshot anterior daquele período. O histórico permanece disponível nas tabelas. A atualização deve conter o período completo, inclusive todos os CRs e funções. Cargas de períodos ausentes no arquivo permanecem vigentes. A publicação é transacional e serializada pelo lock de importação.
+

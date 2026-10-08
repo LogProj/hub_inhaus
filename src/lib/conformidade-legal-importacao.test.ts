@@ -6,7 +6,7 @@ const dbMock = vi.hoisted(() => ({ connect: vi.fn(), query: vi.fn(), release: vi
 vi.mock("@/lib/db-inhaus", () => ({ inhausPool: { connect: dbMock.connect } }))
 vi.mock("server-only", () => ({}))
 
-import { analisarPlanilhaConformidade, importarConformidadeLegal } from "./conformidade-legal-importacao"
+import { analisarPlanilhaConformidade, canonicalizarConteudoCompetencia, importarConformidadeLegal } from "./conformidade-legal-importacao"
 
 const cabecalhos = [
   "MÊS/ANO", "GERENTE REGIONAL", "GERENTE", "CR", "SUPERVISOR", "FUNÇÃO", "COLABORADOR",
@@ -34,6 +34,12 @@ function totalGeral(total: number) {
 }
 
 describe("importação de conformidade legal", () => {
+  it("compara ticket com a precisão decimal do banco, inclusive empates positivos e negativos", () => {
+    const row = [...Array(9).fill("dimensao"), ...Array(9).fill(0), 1.23445]
+    expect(canonicalizarConteudoCompetencia([row])).toBe(canonicalizarConteudoCompetencia([[...row.slice(0, 18), "1.2345"]]))
+    expect(canonicalizarConteudoCompetencia([[...row.slice(0, 18), -1.23445]])).toBe(canonicalizarConteudoCompetencia([[...row.slice(0, 18), "-1.2345"]]))
+    expect(canonicalizarConteudoCompetencia([[...row.slice(0, 18), 1e-8]])).toBe(canonicalizarConteudoCompetencia([[...row.slice(0, 18), "0.0000"]]))
+  })
   it("aceita XML com prefixo e referências omitidas do exportador do dashboard", async () => {
     const zip = await JSZip.loadAsync(await gerar([detalhe(), totalGeral(1).map((v) => v ?? 0), ["Filtros aplicados: Ativos"]]))
     for (const arquivo of ["xl/workbook.xml", "xl/worksheets/sheet1.xml", "xl/styles.xml"]) {
@@ -91,6 +97,84 @@ describe("importação de conformidade legal", () => {
     expect(dbMock.query.mock.calls.some(([sql]) => String(sql).startsWith("INSERT"))).toBe(false)
     expect(dbMock.query).toHaveBeenCalledWith("ROLLBACK")
     expect(dbMock.release).toHaveBeenCalledOnce()
+  })
+
+  it("compara conteúdo por competência ignorando ordem e normalizando números", () => {
+    const a = ["2026-08-01", "R", "G", "00123", "CR", "S", "F", "hash", "Pessoa", null, "0", 0, 0, 0, 0, 0, "4.0", 2, "12.50"]
+    const b = ["2026-08-01", "R", "G", "00123", "CR", "S", "F", "hash", "Pessoa", 0, 0, "0", 0, 0, 0, "0", 4, "2.0", 12.5]
+    expect(canonicalizarConteudoCompetencia([a])).toBe(canonicalizarConteudoCompetencia([b]))
+  })
+
+  it("ignora conteúdo atual idêntico com nome e ordem de arquivo diferentes", async () => {
+    const arquivo = await gerar([detalhe(), totalGeral(1), ["Filtros aplicados: Ativos"]])
+    const dados = await analisarPlanilhaConformidade(arquivo, "segredo")
+    const row = dados.rows[0]!
+    dbMock.query.mockImplementation(async (sql: string) => {
+      const texto = String(sql)
+      if (texto.includes("SELECT id FROM public.ft_conformidade_legal_carga")) return { rowCount: 0, rows: [] }
+      if (texto.includes("FROM public.vw_conformidade_legal")) return { rowCount: 1, rows: [Object.fromEntries([
+        ["competencia", row[0]], ["gerente_regional", row[1]], ["gerente", row[2]], ["cr_cod", row[3]], ["cr_nome", row[4]],
+        ["supervisor", row[5]], ["funcao", row[6]], ["cpf_hash", row[7]], ["colaborador_nome", row[8]],
+        ["interjornada", row[9]], ["limite_hr_dia", row[10]], ["limite_hr_dia_excecao", row[11]], ["folga_semanal", row[12]],
+        ["x12x36_limite_ft_mes", row[13]], ["ferias_com_ponto", row[14]], ["total_ocorrencias", row[15]],
+        ["total_processos", row[16]], ["processos_encerrados", row[17]], ["ticket_medio_encerrado", row[18]],
+      ])] }
+      return { rowCount: 0, rows: [] }
+    })
+    const result = await importarConformidadeLegal(arquivo, "outro-nome.xlsx", "segredo")
+    expect(result).toMatchObject({ registros: 0, competencias: [], competenciasIgnoradas: ["2026-08-01"], duplicado: true })
+    expect(dbMock.query.mock.calls.some(([sql]) => String(sql).startsWith("INSERT"))).toBe(false)
+    expect(dbMock.query).toHaveBeenCalledWith("ROLLBACK")
+  })
+
+  it("grava novo snapshot quando uma métrica da competência mudou", async () => {
+    const arquivo = await gerar([detalhe(), totalGeral(1), ["Filtros aplicados: Ativos"]])
+    const dados = await analisarPlanilhaConformidade(arquivo, "segredo")
+    const row = dados.rows[0]!
+    const atual = Object.fromEntries([
+      ["competencia", row[0]], ["gerente_regional", row[1]], ["gerente", row[2]], ["cr_cod", row[3]], ["cr_nome", row[4]],
+      ["supervisor", row[5]], ["funcao", row[6]], ["cpf_hash", row[7]], ["colaborador_nome", row[8]],
+      ["interjornada", row[9]], ["limite_hr_dia", row[10]], ["limite_hr_dia_excecao", row[11]], ["folga_semanal", row[12]],
+      ["x12x36_limite_ft_mes", row[13]], ["ferias_com_ponto", row[14]], ["total_ocorrencias", row[15]],
+      ["total_processos", row[16]], ["processos_encerrados", row[17]], ["ticket_medio_encerrado", 99],
+    ])
+    dbMock.query.mockImplementation(async (sql: string) => {
+      const texto = String(sql)
+      if (texto.includes("SELECT id FROM public.ft_conformidade_legal_carga")) return { rowCount: 0, rows: [] }
+      if (texto.includes("FROM public.vw_conformidade_legal")) return { rowCount: 1, rows: [atual] }
+      if (texto.includes("RETURNING id")) return { rowCount: 1, rows: [{ id: "88" }] }
+      if (texto.includes("SELECT count(*)")) return { rowCount: 1, rows: [{ registros: 1, ocorrencias: 1 }] }
+      return { rowCount: 1, rows: [] }
+    })
+    const result = await importarConformidadeLegal(arquivo, "modelo.xlsx", "segredo")
+    expect(result).toMatchObject({ registros: 1, competencias: ["2026-08-01"], duplicado: false })
+    expect(dbMock.query.mock.calls.some(([sql]) => String(sql).startsWith("INSERT INTO public.ft_conformidade_legal ("))).toBe(true)
+  })
+
+  it("grava competência nova e ignora a competência já idêntica no mesmo arquivo", async () => {
+    const outra = [...detalhe("12345678902", "Pessoa B")]
+    outra[0] = "SET 2026"
+    const arquivo = await gerar([detalhe(), outra, totalGeral(2), ["Filtros aplicados: Ativos"]])
+    const dados = await analisarPlanilhaConformidade(arquivo, "segredo")
+    const row = dados.rows[0]!
+    dbMock.query.mockImplementation(async (sql: string) => {
+      const texto = String(sql)
+      if (texto.includes("SELECT id FROM public.ft_conformidade_legal_carga")) return { rowCount: 0, rows: [] }
+      if (texto.includes("FROM public.vw_conformidade_legal")) return { rowCount: 1, rows: [Object.fromEntries([
+        ["competencia", row[0]], ["gerente_regional", row[1]], ["gerente", row[2]], ["cr_cod", row[3]], ["cr_nome", row[4]],
+        ["supervisor", row[5]], ["funcao", row[6]], ["cpf_hash", row[7]], ["colaborador_nome", row[8]],
+        ["interjornada", row[9]], ["limite_hr_dia", row[10]], ["limite_hr_dia_excecao", row[11]], ["folga_semanal", row[12]],
+        ["x12x36_limite_ft_mes", row[13]], ["ferias_com_ponto", row[14]], ["total_ocorrencias", row[15]],
+        ["total_processos", row[16]], ["processos_encerrados", row[17]], ["ticket_medio_encerrado", row[18]],
+      ])] }
+      if (texto.includes("RETURNING id")) return { rowCount: 1, rows: [{ id: "88" }] }
+      if (texto.includes("SELECT count(*)")) return { rowCount: 1, rows: [{ registros: 1, ocorrencias: 1 }] }
+      return { rowCount: 1, rows: [] }
+    })
+    const result = await importarConformidadeLegal(arquivo, "modelo.xlsx", "segredo")
+    expect(result).toMatchObject({ registros: 1, ocorrencias: 1, competencias: ["2026-09-01"], competenciasIgnoradas: ["2026-08-01"], duplicado: false })
+    expect(dbMock.query.mock.calls.find(([sql]) => String(sql).startsWith("INSERT INTO public.ft_conformidade_legal_carga"))?.[1]?.[4]).toBe(1)
+    expect(dbMock.query.mock.calls.find(([sql]) => String(sql).startsWith("INSERT INTO public.ft_conformidade_legal ("))?.[1]).toContain(dados.rows[1]?.[7])
   })
 
   it("grava em transação, confere registros e ocorrências e publica a carga", async () => {
