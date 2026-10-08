@@ -116,3 +116,8 @@ Página inicial proposta: total de ocorrências, colaboradores com ocorrência, 
 
 Conformidade legal possui acesso integral por tela: quem tem a permissão conformidade-legal pode consultar todos os CRs, sem vínculo obrigatório com CR ou cliente. A regra vale para o dashboard e o detalhamento. Filtros são opcionais e não definem autorização. Sessões ausentes ou vencidas não recebem dados. Esta exceção é exclusiva deste indicador; o isolamento dos demais módulos permanece em vigor.
 
+
+## Importação pelo painel
+
+Administradores podem usar Importar Excel na página de Conformidade legal. O arquivo .xlsx (até 4 MB) deve manter os 17 campos, a hierarquia completa, o total geral e os filtros da extração do modelo original. A validação exclui totais/subtotais, confere a soma das ocorrências e bloqueia arquivos inconsistentes. A carga é gravada em transação, mantendo o histórico; reenvios idênticos não duplicam registros. O CPF é convertido em HMAC no servidor e não é gravado em texto. A página atualiza após o sucesso. O endpoint exige administrador, mesma origem e EPI_CPF_SECRET configurado.
+

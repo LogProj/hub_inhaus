@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { ShieldCheck, Clock3 } from "lucide-react"
-import { assertTelaVisivel } from "@/lib/dashboard-acesso"
+import { assertTelaVisivel, resolverPapeisDashboard } from "@/lib/dashboard-acesso"
+import { ImportarExcelConformidade } from "@/components/conformidade-legal/ImportarExcelConformidade"
 import { escopoConformidadeAtual } from "@/lib/conformidade-legal-acesso"
 import { lerFiltrosConformidade } from "@/lib/conformidade-legal-filtros"
 import { getConformidadeLegal, type DadosConformidadeLegal } from "@/lib/conformidade-legal"
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic"
 
 export default async function ConformidadeLegalPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   await assertTelaVisivel("conformidade-legal")
+  const { isAdmin } = await resolverPapeisDashboard("/dashboards/conformidade-legal")
   let dados: DadosConformidadeLegal | null = null
   try {
     dados = await getConformidadeLegal(await escopoConformidadeAtual())
@@ -52,6 +54,7 @@ export default async function ConformidadeLegalPage({ searchParams }: { searchPa
           <div><p>Última atualização</p><p className="mt-1 font-medium text-foreground">{atualizado ?? "Não disponível"}</p></div>
         </div>
       </header>
+      {isAdmin && <ImportarExcelConformidade />}
       {!dados ? (
         <section role="alert" className="rounded-3xl border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">
           <p className="font-semibold">Não foi possível carregar a conformidade legal.</p>
